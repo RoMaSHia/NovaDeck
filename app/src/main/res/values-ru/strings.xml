@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NovaDeck</string>
+    <string name="app_subtitle">ОФФЛАЙН ПУЛЬТ ТЕЛЕМЕТРИИ</string>
+
+    <!-- Навигация и верхняя панель -->
+    <string name="nav_home">ПУЛЬТ</string>
+    <string name="nav_monitor">МОНИТОР</string>
+    <string name="nav_storage">ПАМЯТЬ</string>
+    <string name="nav_apps">ПРИЛОЖ.</string>
+    <string name="nav_hardware">ТЕСТЫ</string>
+    <string name="nav_privacy">ЗАЩИТА</string>
+    <string name="nav_bench">БЕНЧ</string>
+    <string name="action_settings">ОПЦИИ</string>
+    <string name="action_close">ЗАКРЫТЬ</string>
+
+    <!-- Настройки и адаптивный режим -->
+    <string name="settings_title">00 // КОНФИГУРАЦИЯ СИСТЕМЫ</string>
+    <string name="settings_lang_label">ЯЗЫК ИНТЕРФЕЙСА</string>
+    <string name="settings_lang_en">ENGLISH [EN]</string>
+    <string name="settings_lang_ru">РУССКИЙ [RU]</string>
+    <string name="settings_perf_label">РЕЖИМ РЕНДЕРИНГА</string>
+    <string name="settings_perf_auto">АВТООПРЕДЕЛЕНИЕ</string>
+    <string name="settings_perf_full">DECK FULL (СЕТКА + 2 ЛУЧА)</string>
+    <string name="settings_perf_lite">ULTRA-LITE (БЕЗ OVERDRAW)</string>
+    <string name="settings_perf_desc">Авторежим определяет &lt;= 3 ГБ ОЗУ, low-RAM устройства и экономию заряда, отключая фоновую сетку для стабильных 60–120 FPS.</string>
+    <string name="settings_offline_badge">БЕЗ РЕКЛАМЫ И ТЕЛЕМЕТРИИ · СЕТЬ ТОЛЬКО ПО КНОПКЕ ОБНОВЛЕНИЯ</string>
+    <string name="tier_badge_full">РЕЖИМ: FULL</string>
+    <string name="tier_badge_lite">РЕЖИМ: ULTRA-LITE</string>
+
+    <!-- Автообновление поверх текущей версии -->
+    <string name="update_tag">04 // ОБНОВЛЕНИЕ ПОВЕРХ ВЕРСИИ</string>
+    <string name="update_btn_check">ПРОВЕРИТЬ</string>
+    <string name="update_btn_download">ОБНОВИТЬ СРАЗУ</string>
+    <string name="update_btn_reinstall">СКАЧАТЬ ПОВЕРХ</string>
+    <string name="update_btn_install_now">УСТАНОВИТЬ APK</string>
+    <string name="update_status_checking">ЗАПРОС К GITHUB…</string>
+    <string name="update_status_latest">АКТУАЛЬНАЯ ВЕРСИЯ (v%1$s)</string>
+    <string name="update_status_avail">ДОСТУПНА НОВАЯ ВЕРСИЯ: v%1$s</string>
+    <string name="update_status_downloading">ЗАГРУЗКА APK: %1$d%%</string>
+    <string name="update_status_perm">РАЗРЕШИТЕ УСТАНОВКУ И НАЖМИТЕ «УСТАНОВИТЬ APK»</string>
+    <string name="update_status_ready">ГОТОВО — УСТАНОВКА ПОВЕРХ ТЕКУЩЕЙ ВЕРСИИ</string>
+    <string name="update_desc">Обновляет NovaDeck прямо поверх установленного приложения без сноса старой версии (данные и история сохраняются).</string>
+
+    <!-- Главная (Дашборд) -->
+    <string name="home_tag_identity">01 // ПАСПОРТ УСТРОЙСТВА</string>
+    <string name="home_tag_telemetry">02 // ЖИВАЯ ТЕЛЕМЕТРИЯ</string>
+    <string name="home_tag_modules">03 // МОДУЛИ ДИАГНОСТИКИ</string>
+    <string name="home_health_index">ИНДЕКС СОСТОЯНИЯ</string>
+    <string name="home_model">МОДЕЛЬ</string>
+    <string name="home_soc">SOC / ПЛАТА</string>
+    <string name="home_arch">АРХИТЕКТУРА</string>
+    <string name="home_android">ANDROID</string>
+    <string name="home_kernel">ЯДРО LINUX</string>
+    <string name="home_uptime">АПТАЙМ</string>
+    <string name="home_ram_cap">ОБЪЁМ ОЗУ</string>
+    <string name="home_cpu_load">ПРОЦЕССОР</string>
+    <string name="home_ram_load">ПАМЯТЬ ОЗУ</string>
+    <string name="home_battery">БАТАРЕЯ</string>
+    <string name="home_storage">НАКОПИТЕЛЬ</string>
+    <string name="home_mod_monitor_desc">Частоты ядер, ток мА, ОЗУ, скорость сети</string>
+    <string name="home_mod_storage_desc">C++ сканер, тяжёлые файлы, дубликаты</string>
+    <string name="home_mod_apps_desc">Пакетное удаление, кэш, бэкап APK</string>
+    <string name="home_mod_hardware_desc">Экран, звук, микрофон, вибро, датчики</string>
+    <string name="home_mod_privacy_desc">Root, шифрование, опасные разрешения</string>
+    <string name="home_mod_bench_desc">C++ ALU/NEON, скорость I/O, троттлинг</string>
+    <string name="status_nominal">НОРМА</string>
+    <string name="status_elevated">НАГРУЗКА</string>
+    <string name="status_critical">КРИТИЧНО</string>
+
+    <!-- Мониторинг в реальном времени -->
+    <string name="mon_tag_cpu">01 // ЯДРА CPU И ЧАСТОТЫ</string>
+    <string name="mon_tag_batt">02 // ТЕЛЕМЕТРИЯ БАТАРЕИ</string>
+    <string name="mon_tag_mem">03 // ОЗУ И SWAP / ZRAM</string>
+    <string name="mon_tag_net">04 // СЕТЕВОЙ ИНТЕРФЕЙС</string>
+    <string name="mon_proc_ok">НАТИВНЫЙ /proc/stat</string>
+    <string name="mon_proc_fallback">SELINUX FALLBACK (ПО ЧАСТОТЕ)</string>
+    <string name="mon_core_fmt">ЯДРО %1$d</string>
+    <string name="mon_freq_fmt">%1$d / %2$d МГц</string>
+    <string name="mon_batt_current">ТОК</string>
+    <string name="mon_batt_voltage">НАПРЯЖЕНИЕ</string>
+    <string name="mon_batt_temp">ТЕМП.</string>
+    <string name="mon_batt_power">МОЩНОСТЬ</string>
+    <string name="mon_batt_health">ЗДОРОВЬЕ</string>
+    <string name="mon_batt_tech">ТЕХНОЛОГИЯ</string>
+    <string name="mon_batt_charging">ЗАРЯДКА</string>
+    <string name="mon_batt_discharging">РАЗРЯД</string>
+    <string name="mon_batt_full">ЗАРЯЖЕНА</string>
+    <string name="mon_health_good">ОТЛИЧНО</string>
+    <string name="mon_health_overheat">ПЕРЕГРЕВ</string>
+    <string name="mon_health_dead">ИЗНОС</string>
+    <string name="mon_mem_used">ЗАНЯТО</string>
+    <string name="mon_mem_avail">ДОСТУПНО</string>
+    <string name="mon_mem_cached">КЭШ И БУФЕРЫ</string>
+    <string name="mon_mem_swap">SWAP / ZRAM</string>
+    <string name="mon_net_rx">ПРИЁМ RX</string>
+    <string name="mon_net_tx">ОТДАЧА TX</string>
+    <string name="mon_net_ip">ЛОКАЛЬНЫЙ IP</string>
+    <string name="mon_net_type">ТИП СЕТИ</string>
+    <string name="mon_net_rssi">СИГНАЛ WI-FI</string>
+    <string name="mon_net_offline">НЕТ СЕТИ</string>
+
+    <!-- Анализатор памяти -->
+    <string name="stor_tag_overview">01 // РАЗДЕЛЫ И C++ СКАНЕР</string>
+    <string name="stor_tag_cats">02 // КАТЕГОРИИ ДАННЫХ</string>
+    <string name="stor_tag_details">03 // ТЯЖЁЛЫЕ ФАЙЛЫ И ДУБЛИКАТЫ</string>
+    <string name="stor_btn_scan">СКАНИРОВАТЬ (C++)</string>
+    <string name="stor_btn_scanning">СКАНИРОВАНИЕ…</string>
+    <string name="stor_btn_clean">ОЧИСТИТЬ ВРЕМЕННЫЕ</string>
+    <string name="stor_btn_grant_full">ПОЛНЫЙ ДОСТУП К ФАЙЛАМ</string>
+    <string name="stor_perm_hint">Android 11+ ограничивает прямой обход сторонних папок без полного доступа. MediaStore и доступные каталоги сканируются автоматически.</string>
+    <string name="stor_tab_heavy">КРУПНЫЕ ФАЙЛЫ</string>
+    <string name="stor_tab_dups">ДУБЛИКАТЫ</string>
+    <string name="stor_tab_temp">КЭШ / МУСОР</string>
+    <string name="stor_cat_photo">ФОТО</string>
+    <string name="stor_cat_video">ВИДЕО</string>
+    <string name="stor_cat_audio">АУДИО</string>
+    <string name="stor_cat_doc">ДОКУМЕНТЫ</string>
+    <string name="stor_cat_apk">APK ФАЙЛЫ</string>
+    <string name="stor_cat_cache">КЭШ / МУСОР</string>
+    <string name="stor_cat_other">ПРОЧЕЕ / АРХИВЫ</string>
+    <string name="stor_scan_stats">%1$d файлов · %2$d папок · %3$d мс</string>
+    <string name="stor_empty_scan">Нажмите СКАНИРОВАТЬ для быстрого многопоточного обхода ФС на C++ и поиска дубликатов по FNV-1a.</string>
+    <string name="stor_no_dups">Точных дубликатов (&gt;= 64 КБ) в доступных каталогах не найдено.</string>
+    <string name="stor_cleaned_msg">Удалено временных файлов: %1$s.</string>
+    <string name="stor_dup_group">%1$d копий · перерасход %2$s</string>
+
+    <!-- Менеджер приложений -->
+    <string name="apps_tag_controls">01 // РЕЕСТР ПРИЛОЖЕНИЙ</string>
+    <string name="apps_search_hint">Поиск по названию или пакету…</string>
+    <string name="apps_filter_user">ПОЛЬЗОВ.</string>
+    <string name="apps_filter_system">СИСТЕМНЫЕ</string>
+    <string name="apps_sort_size">РАЗМЕР</string>
+    <string name="apps_sort_name">ИМЯ</string>
+    <string name="apps_batch_uninstall">УДАЛИТЬ (%1$d)</string>
+    <string name="apps_btn_backup">ЭКСПОРТ APK</string>
+    <string name="apps_btn_cache">КЭШ / О ПРОГР.</string>
+    <string name="apps_btn_uninstall">УДАЛИТЬ</string>
+    <string name="apps_backup_ok">Сохранено в Downloads/NovaDeck_Backups/%1$s</string>
+    <string name="apps_backup_fail">Ошибка экспорта APK: %1$s</string>
+    <string name="apps_loading">Индексация установленных пакетов…</string>
+    <string name="apps_count_fmt">%1$d пакетов · объём APK: %2$s</string>
+
+    <!-- Тест железа и датчиков -->
+    <string name="hw_tag_display">01 // ЭКРАН И МУЛЬТИТАЧ</string>
+    <string name="hw_tag_audio">02 // ЗВУК, МИКРОФОН, ВИБРО</string>
+    <string name="hw_tag_sensors">03 // ДАТЧИКИ 60 ГЦ</string>
+    <string name="hw_btn_dead_pixel">БИТЫЕ ПИКСЕЛИ</string>
+    <string name="hw_btn_multitouch">ТЕСТ МУЛЬТИТАЧА</string>
+    <string name="hw_dead_pixel_hint">ТАП — СМЕНИТЬ ЦВЕТ · ДВОЙНОЙ ТАП — ВЫХОД</string>
+    <string name="hw_multitouch_hint">КОСНИТЕСЬ НЕСКОЛЬКИМИ ПАЛЬЦАМИ · ВЫХОД СПРАВА СВЕРХУ</string>
+    <string name="hw_exit">ВЫХОД</string>
+    <string name="hw_audio_left">ЛЕВЫЙ</string>
+    <string name="hw_audio_right">ПРАВЫЙ</string>
+    <string name="hw_audio_stereo">СТЕРЕО</string>
+    <string name="hw_audio_stop">СТОП ТОН</string>
+    <string name="hw_freq_fmt">ГЕНЕРАТОР ЧАСТОТ: %1$d Гц</string>
+    <string name="hw_mic_start">ВКЛ. МИКРОФОН</string>
+    <string name="hw_mic_stop">СТОП МИКР.</string>
+    <string name="hw_mic_level">УРОВЕНЬ МИКР.: %1$.1f дБFS</string>
+    <string name="hw_vibrate_pulse">ВИБРО ИМПУЛЬС</string>
+    <string name="hw_vibrate_pattern">СЕРИЯ</string>
+    <string name="hw_torch_on">ФОНАРИК: ВКЛ</string>
+    <string name="hw_torch_off">ФОНАРИК: ВЫКЛ</string>
+    <string name="hw_torch_na">ВСПЫШКА НЕДОСТУПНА</string>
+    <string name="hw_sensor_accel">АКСЕЛЕРОМЕТР (м/с²)</string>
+    <string name="hw_sensor_gyro">ГИРОСКОП (рад/с)</string>
+    <string name="hw_sensor_mag">МАГНИТОМЕТР (мкТл)</string>
+    <string name="hw_sensor_light">ОСВЕЩЁННОСТЬ (лк)</string>
+    <string name="hw_sensor_prox">ПРИБЛИЖЕНИЕ (см)</string>
+    <string name="hw_sensor_unavail">ДАТЧИК ОТСУТСТВУЕТ</string>
+
+    <!-- Аудит приватности и безопасности -->
+    <string name="priv_tag_posture">01 // АУДИТ СИСТЕМЫ</string>
+    <string name="priv_tag_perms">02 // ЧУВСТВИТЕЛЬНЫЕ ПРАВА</string>
+    <string name="priv_score_label">ИНДЕКС ЗАЩИТЫ</string>
+    <string name="priv_check_enc">ШИФРОВАНИЕ ПАМЯТИ</string>
+    <string name="priv_check_root">ROOT / MAGISK / SU</string>
+    <string name="priv_check_adb">ОТЛАДКА ПО USB (ADB)</string>
+    <string name="priv_check_dev">РЕЖИМ РАЗРАБОТЧИКА</string>
+    <string name="priv_check_lock">ЭКРАН БЛОКИРОВКИ</string>
+    <string name="priv_check_patch">ПАТЧ БЕЗОПАСНОСТИ</string>
+    <string name="priv_val_encrypted">ВКЛЮЧЕНО</string>
+    <string name="priv_val_unencrypted">НЕ ЗАШИФРОВАНО</string>
+    <string name="priv_val_clean">НЕ ОБНАРУЖЕН</string>
+    <string name="priv_val_detected">ОБНАРУЖЕН</string>
+    <string name="priv_val_enabled">ВКЛЮЧЕН</string>
+    <string name="priv_val_disabled">ВЫКЛЮЧЕН</string>
+    <string name="priv_perm_camera">КАМЕРА</string>
+    <string name="priv_perm_mic">МИКРОФОН</string>
+    <string name="priv_perm_loc">ГЕОПОЗИЦИЯ</string>
+    <string name="priv_perm_sms">СМС / ЗВОНКИ</string>
+    <string name="priv_btn_revoke">ОТОЗВАТЬ ПРАВА</string>
+    <string name="priv_no_apps">Нет пользовательских приложений с этим разрешением.</string>
+
+    <!-- Бенчмарк и стресс-тест -->
+    <string name="bench_tag_cpu">01 // C++ ТЕСТ CPU И ОЗУ</string>
+    <string name="bench_tag_storage">02 // СКОРОСТЬ НАКОПИТЕЛЯ</string>
+    <string name="bench_tag_throttle">03 // ТРОТТЛИНГ-СТРЕСС ТЕСТ</string>
+    <string name="bench_tag_history">04 // ИСТОРИЯ ЗАМЕРОВ</string>
+    <string name="bench_btn_cpu">ТЕСТ CPU + ОЗУ</string>
+    <string name="bench_btn_io">ТЕСТ ПАМЯТИ I/O</string>
+    <string name="bench_btn_throttle">ЗАПУСТИТЬ 30С ТРОТТЛИНГ</string>
+    <string name="bench_btn_stop">ОСТАНОВИТЬ</string>
+    <string name="bench_int_st">INT 1 ЯДРО (GOPS)</string>
+    <string name="bench_int_mt">INT ВСЕ ЯДРА</string>
+    <string name="bench_vec_st">NEON 1 ЯДРО (GFLOPS)</string>
+    <string name="bench_vec_mt">NEON ВСЕ ЯДРА</string>
+    <string name="bench_dram_lat">ЗАДЕРЖКА DRAM</string>
+    <string name="bench_score">ИТОГОВЫЙ БАЛЛ</string>
+    <string name="bench_io_seq_w">ПОСЛ. ЗАПИСЬ</string>
+    <string name="bench_io_seq_r">ПОСЛ. ЧТЕНИЕ</string>
+    <string name="bench_io_rand">СЛУЧ. 4K ЧТЕНИЕ</string>
+    <string name="bench_io_iops">4K IOPS</string>
+    <string name="bench_throttle_stab">СТАБИЛЬНОСТЬ: %1$.1f%% · ПИК ТЕМП.: %2$.1f°C</string>
+    <string name="bench_history_empty">История замеров пока пуста.</string>
+</resources>

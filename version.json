@@ -1,0 +1,7 @@
+{
+  "versionCode": 1,
+  "versionName": "1.0.0",
+  "apkUrl": "https://github.com/RoMaSHia/NovaDeck/raw/main/dist/NovaDeck-release.apk",
+  "releaseUrl": "https://github.com/RoMaSHia/NovaDeck/releases/latest/download/NovaDeck-release.apk",
+  "changelog": "Initial release of NovaDeck (C++17 NDK + Brutalist Dark UI + In-Place OTA Updater)"
+}

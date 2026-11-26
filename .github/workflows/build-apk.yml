@@ -1,0 +1,99 @@
+name: Build NovaDeck Android APK
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build APK (arm64-v8a + armeabi-v7a)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK Platform, CMake, and NDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0" \
+            "cmake;3.22.1" \
+            "ndk;26.1.10909125"
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Prepare release signing keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.NOVADECK_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > app/novadeck-release.jks
+          elif [ ! -f app/novadeck-release.jks ]; then
+            keytool -genkeypair -v \
+              -keystore app/novadeck-release.jks \
+              -alias "${{ secrets.NOVADECK_KEY_ALIAS || 'novadeck' }}" \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "${{ secrets.NOVADECK_STORE_PASS || 'novadeck2026' }}" \
+              -keypass "${{ secrets.NOVADECK_KEY_PASS || 'novadeck2026' }}" \
+              -dname "CN=NovaDeck, OU=Telemetry, O=NovaDeck, L=Offline, S=None, C=US"
+          fi
+
+      - name: Build Debug & R8 Release APKs
+        env:
+          NOVADECK_KEYSTORE: novadeck-release.jks
+          NOVADECK_STORE_PASS: ${{ secrets.NOVADECK_STORE_PASS || 'novadeck2026' }}
+          NOVADECK_KEY_ALIAS: ${{ secrets.NOVADECK_KEY_ALIAS || 'novadeck' }}
+          NOVADECK_KEY_PASS: ${{ secrets.NOVADECK_KEY_PASS || 'novadeck2026' }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace
+
+      - name: Package APK outputs
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk dist/NovaDeck-debug.apk
+          cp app/build/outputs/apk/release/app-release.apk dist/NovaDeck-release.apk
+          ls -lh dist/
+
+      - name: Upload APK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: NovaDeck-APKs
+          path: dist/*.apk
+          retention-days: 30
+
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/NovaDeck-release.apk
+            dist/NovaDeck-debug.apk
+          generate_release_notes: true

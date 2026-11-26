@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NovaDeck</string>
+    <string name="app_subtitle">OFFLINE TELEMETRY DECK</string>
+
+    <!-- Navigation & Top Bar -->
+    <string name="nav_home">DECK</string>
+    <string name="nav_monitor">MONITOR</string>
+    <string name="nav_storage">STORAGE</string>
+    <string name="nav_apps">APPS</string>
+    <string name="nav_hardware">HARDWARE</string>
+    <string name="nav_privacy">PRIVACY</string>
+    <string name="nav_bench">BENCH</string>
+    <string name="action_settings">CONFIG</string>
+    <string name="action_close">CLOSE</string>
+
+    <!-- Settings & Adaptive Performance -->
+    <string name="settings_title">00 // SYSTEM CONFIGURATION</string>
+    <string name="settings_lang_label">INTERFACE LANGUAGE</string>
+    <string name="settings_lang_en">ENGLISH [EN]</string>
+    <string name="settings_lang_ru">РУССКИЙ [RU]</string>
+    <string name="settings_perf_label">RENDER PERFORMANCE TIER</string>
+    <string name="settings_perf_auto">AUTO DETECT</string>
+    <string name="settings_perf_full">DECK FULL (GRID + DUAL TRACE)</string>
+    <string name="settings_perf_lite">ULTRA-LITE (ZERO OVERDRAW)</string>
+    <string name="settings_perf_desc">Auto mode detects &lt;= 3 GB RAM, low-RAM devices, and Battery Saver to disable background canvas passes and keep 60–120 FPS.</string>
+    <string name="settings_offline_badge">100% OFFLINE TELEMETRY · ZERO ADS · NETWORK USED ONLY ON UPDATE TAP</string>
+    <string name="tier_badge_full">TIER: FULL</string>
+    <string name="tier_badge_lite">TIER: ULTRA-LITE</string>
+
+    <!-- In-Place OTA Updater -->
+    <string name="update_tag">04 // IN-PLACE SELF-UPDATER</string>
+    <string name="update_btn_check">CHECK UPDATE</string>
+    <string name="update_btn_download">UPDATE IN-PLACE</string>
+    <string name="update_btn_reinstall">REINSTALL LATEST</string>
+    <string name="update_btn_install_now">INSTALL APK NOW</string>
+    <string name="update_status_checking">QUERYING GITHUB REPOSITORY…</string>
+    <string name="update_status_latest">UP TO DATE (v%1$s)</string>
+    <string name="update_status_avail">NEW VERSION AVAILABLE: v%1$s</string>
+    <string name="update_status_downloading">DOWNLOADING APK: %1$d%%</string>
+    <string name="update_status_perm">ALLOW UNKNOWN INSTALLS, THEN TAP INSTALL</string>
+    <string name="update_status_ready">PACKAGE READY — INSTALLING OVER EXISTING APP</string>
+    <string name="update_desc">Updates NovaDeck directly over the installed version with preserved settings and history (no uninstall needed).</string>
+
+    <!-- Home Screen -->
+    <string name="home_tag_identity">01 // HARDWARE IDENTITY</string>
+    <string name="home_tag_telemetry">02 // LIVE TELEMETRY MATRIX</string>
+    <string name="home_tag_modules">03 // DIAGNOSTIC MODULES</string>
+    <string name="home_health_index">SYSTEM HEALTH</string>
+    <string name="home_model">MODEL</string>
+    <string name="home_soc">SOC / BOARD</string>
+    <string name="home_arch">ABI / ARCH</string>
+    <string name="home_android">ANDROID</string>
+    <string name="home_kernel">KERNEL</string>
+    <string name="home_uptime">UPTIME</string>
+    <string name="home_ram_cap">PHYSICAL RAM</string>
+    <string name="home_cpu_load">CPU LOAD</string>
+    <string name="home_ram_load">MEMORY</string>
+    <string name="home_battery">BATTERY</string>
+    <string name="home_storage">STORAGE</string>
+    <string name="home_mod_monitor_desc">Per-core clocks, mA current, RAM, RX/TX</string>
+    <string name="home_mod_storage_desc">C++ MT scanner, heavy files, duplicates</string>
+    <string name="home_mod_apps_desc">Batch uninstall, cache jump, APK backup</string>
+    <string name="home_mod_hardware_desc">Screen, audio, mic, vibrator, 60Hz sensors</string>
+    <string name="home_mod_privacy_desc">Root/encryption check, sensitive perms</string>
+    <string name="home_mod_bench_desc">C++ ALU/NEON, I/O speed, throttle curve</string>
+    <string name="status_nominal">NOMINAL</string>
+    <string name="status_elevated">ELEVATED</string>
+    <string name="status_critical">CRITICAL</string>
+
+    <!-- Live Monitor -->
+    <string name="mon_tag_cpu">01 // CPU CORES &amp; LOAD</string>
+    <string name="mon_tag_batt">02 // BATTERY TELEMETRY</string>
+    <string name="mon_tag_mem">03 // MEMORY &amp; ZRAM</string>
+    <string name="mon_tag_net">04 // NETWORK LINK</string>
+    <string name="mon_proc_ok">NATIVE /proc/stat</string>
+    <string name="mon_proc_fallback">SELINUX FALLBACK (FREQ EST.)</string>
+    <string name="mon_core_fmt">CPU%1$d</string>
+    <string name="mon_freq_fmt">%1$d / %2$d MHz</string>
+    <string name="mon_batt_current">CURRENT</string>
+    <string name="mon_batt_voltage">VOLTAGE</string>
+    <string name="mon_batt_temp">TEMP</string>
+    <string name="mon_batt_power">POWER</string>
+    <string name="mon_batt_health">HEALTH</string>
+    <string name="mon_batt_tech">CHEMISTRY</string>
+    <string name="mon_batt_charging">CHARGING</string>
+    <string name="mon_batt_discharging">DISCHARGING</string>
+    <string name="mon_batt_full">FULL</string>
+    <string name="mon_health_good">GOOD</string>
+    <string name="mon_health_overheat">OVERHEAT</string>
+    <string name="mon_health_dead">DEGRADED</string>
+    <string name="mon_mem_used">USED</string>
+    <string name="mon_mem_avail">AVAILABLE</string>
+    <string name="mon_mem_cached">CACHED / BUFFERS</string>
+    <string name="mon_mem_swap">SWAP / ZRAM</string>
+    <string name="mon_net_rx">RX DOWN</string>
+    <string name="mon_net_tx">TX UP</string>
+    <string name="mon_net_ip">LOCAL IP</string>
+    <string name="mon_net_type">TRANSPORT</string>
+    <string name="mon_net_rssi">WI-FI SIGNAL</string>
+    <string name="mon_net_offline">OFFLINE</string>
+
+    <!-- Storage Checker -->
+    <string name="stor_tag_overview">01 // PARTITION &amp; C++ ENGINE</string>
+    <string name="stor_tag_cats">02 // CATEGORY BREAKDOWN</string>
+    <string name="stor_tag_details">03 // HEAVY FILES &amp; DUPLICATES</string>
+    <string name="stor_btn_scan">RUN C++ SCAN</string>
+    <string name="stor_btn_scanning">SCANNING…</string>
+    <string name="stor_btn_clean">CLEAN TEMP / CACHE</string>
+    <string name="stor_btn_grant_full">FULL STORAGE ACCESS</string>
+    <string name="stor_perm_hint">Android 11+ restricts raw scanning of third-party folders without All-Files access. MediaStore + accessible paths work automatically.</string>
+    <string name="stor_tab_heavy">HEAVY FILES</string>
+    <string name="stor_tab_dups">DUPLICATES</string>
+    <string name="stor_tab_temp">RESIDUAL / TEMP</string>
+    <string name="stor_cat_photo">PHOTOS</string>
+    <string name="stor_cat_video">VIDEOS</string>
+    <string name="stor_cat_audio">AUDIO</string>
+    <string name="stor_cat_doc">DOCUMENTS</string>
+    <string name="stor_cat_apk">APK PACKAGES</string>
+    <string name="stor_cat_cache">CACHE / TEMP</string>
+    <string name="stor_cat_other">OTHER / ARCHIVES</string>
+    <string name="stor_scan_stats">%1$d files · %2$d dirs · %3$d ms</string>
+    <string name="stor_empty_scan">Press RUN C++ SCAN to analyze storage with multi-threaded native walker &amp; FNV-1a duplicate detector.</string>
+    <string name="stor_no_dups">No exact duplicate files (&gt;= 64 KB) found in accessible storage.</string>
+    <string name="stor_cleaned_msg">Reclaimed %1$s of residual/temporary files.</string>
+    <string name="stor_dup_group">%1$d copies · wasted %2$s</string>
+
+    <!-- App Manager -->
+    <string name="apps_tag_controls">01 // PACKAGE INVENTORY</string>
+    <string name="apps_search_hint">Search app name or package…</string>
+    <string name="apps_filter_user">USER APPS</string>
+    <string name="apps_filter_system">SYSTEM</string>
+    <string name="apps_sort_size">SIZE</string>
+    <string name="apps_sort_name">NAME</string>
+    <string name="apps_batch_uninstall">UNINSTALL (%1$d)</string>
+    <string name="apps_btn_backup">EXPORT APK</string>
+    <string name="apps_btn_cache">CACHE / INFO</string>
+    <string name="apps_btn_uninstall">UNINSTALL</string>
+    <string name="apps_backup_ok">Exported to Downloads/NovaDeck_Backups/%1$s</string>
+    <string name="apps_backup_fail">Failed to export APK: %1$s</string>
+    <string name="apps_loading">Indexing installed packages…</string>
+    <string name="apps_count_fmt">%1$d packages · %2$s total APK footprint</string>
+
+    <!-- Hardware & Sensor Tester -->
+    <string name="hw_tag_display">01 // DISPLAY &amp; TOUCH</string>
+    <string name="hw_tag_audio">02 // AUDIO &amp; ACTUATORS</string>
+    <string name="hw_tag_sensors">03 // LIVE 60HZ SENSOR BUS</string>
+    <string name="hw_btn_dead_pixel">DEAD PIXEL TEST</string>
+    <string name="hw_btn_multitouch">MULTITOUCH TEST</string>
+    <string name="hw_dead_pixel_hint">TAP TO CYCLE COLORS · DOUBLE TAP TO EXIT</string>
+    <string name="hw_multitouch_hint">TOUCH SCREEN WITH MULTIPLE FINGERS · TAP EXIT TOP-RIGHT</string>
+    <string name="hw_exit">EXIT</string>
+    <string name="hw_audio_left">LEFT CH</string>
+    <string name="hw_audio_right">RIGHT CH</string>
+    <string name="hw_audio_stereo">STEREO</string>
+    <string name="hw_audio_stop">STOP TONE</string>
+    <string name="hw_freq_fmt">TONE GENERATOR: %1$d Hz</string>
+    <string name="hw_mic_start">START MIC METER</string>
+    <string name="hw_mic_stop">STOP MIC</string>
+    <string name="hw_mic_level">MIC LEVEL: %1$.1f dBFS</string>
+    <string name="hw_vibrate_pulse">VIBRATE PULSE</string>
+    <string name="hw_vibrate_pattern">PATTERN</string>
+    <string name="hw_torch_on">FLASHLIGHT: ON</string>
+    <string name="hw_torch_off">FLASHLIGHT: OFF</string>
+    <string name="hw_torch_na">NO FLASH UNIT</string>
+    <string name="hw_sensor_accel">ACCELEROMETER (m/s²)</string>
+    <string name="hw_sensor_gyro">GYROSCOPE (rad/s)</string>
+    <string name="hw_sensor_mag">MAGNETOMETER (μT)</string>
+    <string name="hw_sensor_light">AMBIENT LIGHT (lux)</string>
+    <string name="hw_sensor_prox">PROXIMITY (cm)</string>
+    <string name="hw_sensor_unavail">SENSOR UNAVAILABLE ON DEVICE</string>
+
+    <!-- Privacy & Security Audit -->
+    <string name="priv_tag_posture">01 // SYSTEM INTEGRITY AUDIT</string>
+    <string name="priv_tag_perms">02 // SENSITIVE PERMISSIONS</string>
+    <string name="priv_score_label">INTEGRITY SCORE</string>
+    <string name="priv_check_enc">STORAGE ENCRYPTION</string>
+    <string name="priv_check_root">ROOT / MAGISK / SU</string>
+    <string name="priv_check_adb">USB DEBUGGING (ADB)</string>
+    <string name="priv_check_dev">DEVELOPER OPTIONS</string>
+    <string name="priv_check_lock">SECURE LOCKSCREEN</string>
+    <string name="priv_check_patch">SECURITY PATCH</string>
+    <string name="priv_val_encrypted">ENCRYPTED</string>
+    <string name="priv_val_unencrypted">NOT ENCRYPTED</string>
+    <string name="priv_val_clean">NOT DETECTED</string>
+    <string name="priv_val_detected">DETECTED</string>
+    <string name="priv_val_enabled">ENABLED</string>
+    <string name="priv_val_disabled">DISABLED</string>
+    <string name="priv_perm_camera">CAMERA</string>
+    <string name="priv_perm_mic">MICROPHONE</string>
+    <string name="priv_perm_loc">LOCATION / BG</string>
+    <string name="priv_perm_sms">SMS / CALL LOG</string>
+    <string name="priv_btn_revoke">MANAGE PERMS</string>
+    <string name="priv_no_apps">No user apps hold this sensitive permission.</string>
+
+    <!-- Benchmark & Stress Test -->
+    <string name="bench_tag_cpu">01 // NATIVE C++ CPU &amp; MEMORY</string>
+    <string name="bench_tag_storage">02 // STORAGE I/O BENCHMARK</string>
+    <string name="bench_tag_throttle">03 // THERMAL THROTTLING STRESS</string>
+    <string name="bench_tag_history">04 // BENCHMARK LOG</string>
+    <string name="bench_btn_cpu">RUN CPU + RAM BENCH</string>
+    <string name="bench_btn_io">RUN STORAGE I/O</string>
+    <string name="bench_btn_throttle">START 30S THROTTLE TEST</string>
+    <string name="bench_btn_stop">STOP TEST</string>
+    <string name="bench_int_st">INT 1T (GOPS)</string>
+    <string name="bench_int_mt">INT ALL-CORE</string>
+    <string name="bench_vec_st">NEON 1T (GFLOPS)</string>
+    <string name="bench_vec_mt">NEON ALL-CORE</string>
+    <string name="bench_dram_lat">DRAM LATENCY</string>
+    <string name="bench_score">COMPOSITE INDEX</string>
+    <string name="bench_io_seq_w">SEQ WRITE</string>
+    <string name="bench_io_seq_r">SEQ READ</string>
+    <string name="bench_io_rand">RND 4K READ</string>
+    <string name="bench_io_iops">4K IOPS</string>
+    <string name="bench_throttle_stab">STABILITY: %1$.1f%% · PEAK TEMP: %2$.1f°C</string>
+    <string name="bench_history_empty">No recorded benchmark runs yet.</string>
+</resources>

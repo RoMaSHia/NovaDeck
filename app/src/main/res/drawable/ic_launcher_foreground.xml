@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Brutalist octagonal deck frame -->
+    <path
+        android:strokeColor="#ECECE6"
+        android:strokeWidth="3"
+        android:pathData="M34,26 L74,26 L82,34 L82,74 L74,82 L34,82 L26,74 L26,34 Z" />
+    <!-- Precision diagonal oscilloscope N-trace in signal orange -->
+    <path
+        android:strokeColor="#E85A2A"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="square"
+        android:strokeLineJoin="miter"
+        android:pathData="M38,70 L38,38 L70,70 L70,38" />
+    <!-- Corner indicator LED -->
+    <path
+        android:fillColor="#E85A2A"
+        android:pathData="M71,29h5v5h-5z" />
+</vector>
