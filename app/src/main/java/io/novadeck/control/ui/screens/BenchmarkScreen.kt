@@ -3,6 +3,7 @@ package io.novadeck.control.ui.screens
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,8 +38,10 @@ import io.novadeck.control.core.NativeBridge
 import io.novadeck.control.core.PerformanceTierController
 import io.novadeck.control.core.TelemetryEngine
 import io.novadeck.control.ui.components.DeckButton
+import io.novadeck.control.ui.components.DeckChip
 import io.novadeck.control.ui.components.DeckPanel
 import io.novadeck.control.ui.components.KeyValueRow
+import io.novadeck.control.ui.components.SegmentedBarMeter
 import io.novadeck.control.ui.components.ZeroAllocLineChart
 import io.novadeck.control.ui.theme.BrutalistColors
 import io.novadeck.control.ui.theme.DeckType
@@ -56,9 +59,15 @@ private data class CpuBenchSnapshot(
     val intMt: Double,
     val vecSt: Double,
     val vecMt: Double,
+    val shaSt: Double,
+    val shaMt: Double,
+    val lzSt: Double,
+    val lzMt: Double,
+    val ramRead: Double,
+    val ramWrite: Double,
+    val ramCopy: Double,
     val dramNs: Double,
-    val score: Double,
-    val secs: Double
+    val score: Double
 )
 
 private data class StorageBenchSnapshot(
@@ -78,17 +87,19 @@ fun BenchmarkScreen(
     val scroll = rememberScrollState()
     val ultraLite = perfController.isUltraLite
 
-    var runningCpu by remember { mutableStateOf(false) }
-    var runningIo by remember { mutableStateOf(false) }
+    var activeTab by remember { mutableIntStateOf(0) } // 0=Full Suite, 1=Stress Test, 2=History
+    var runningSuite by remember { mutableStateOf(false) }
     var runningThrottle by remember { mutableStateOf(false) }
+    var stressDurationSec by remember { mutableIntStateOf(30) }
 
     var cpuSnap by remember { mutableStateOf<CpuBenchSnapshot?>(null) }
     var ioSnap by remember { mutableStateOf<StorageBenchSnapshot?>(null) }
 
-    val throttlePerfRing = remember { FloatRingBuffer(40) }
-    val throttleTempRing = remember { FloatRingBuffer(40) }
+    val throttlePerfRing = remember { FloatRingBuffer(80) }
+    val throttleTempRing = remember { FloatRingBuffer(80) }
     var throttleTick by remember { mutableLongStateOf(0L) }
     var throttleSliceIdx by remember { mutableIntStateOf(0) }
+    var throttleTotalSlices by remember { mutableIntStateOf(40) }
     var throttleStabilityPct by remember { mutableFloatStateOf(100f) }
     var throttlePeakTemp by remember { mutableFloatStateOf(0f) }
     var throttlePeakGops by remember { mutableDoubleStateOf(0.0) }
@@ -102,7 +113,7 @@ fun BenchmarkScreen(
         val ts = SimpleDateFormat("MM-dd HH:mm", Locale.US).format(Date())
         val line = "[$ts] $entry"
         historyLog.add(0, line)
-        if (historyLog.size > 15) historyLog.removeAt(historyLog.lastIndex)
+        if (historyLog.size > 20) historyLog.removeAt(historyLog.lastIndex)
         saveHistory(context, historyLog)
     }
 
@@ -115,228 +126,302 @@ fun BenchmarkScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scroll)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // 01 // NATIVE C++ CPU & MEMORY BENCHMARK
-        DeckPanel(
-            title = stringResource(R.string.bench_tag_cpu),
-            ledColor = if (runningCpu) BrutalistColors.SignalAccent else BrutalistColors.StatusNominal
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
-            DeckButton(
-                text = if (runningCpu) stringResource(R.string.stor_btn_scanning) else stringResource(R.string.bench_btn_cpu),
-                onClick = {
-                    if (runningCpu || runningThrottle) return@DeckButton
-                    runningCpu = true
-                    scope.launch {
-                        val arr = withContext(Dispatchers.Default) {
-                            NativeBridge.safeRunCpuBenchmark(telemetry.coreCount, 850)
-                        }
-                        if (arr.size >= 7) {
-                            val snap = CpuBenchSnapshot(arr[0], arr[1], arr[2], arr[3], arr[4], arr[5], arr[6])
-                            cpuSnap = snap
-                            appendHistory(
-                                String.format(
-                                    Locale.US,
-                                    "CPU %.0f pts · INT %.2f/%.2f · NEON %.2f/%.2f · DRAM %.1f ns",
-                                    snap.score, snap.intSt, snap.intMt, snap.vecSt, snap.vecMt, snap.dramNs
-                                )
-                            )
-                        }
-                        runningCpu = false
-                    }
-                },
-                primary = true,
-                enabled = !runningCpu && !runningThrottle,
-                modifier = Modifier.fillMaxWidth()
-            )
-            val c = cpuSnap
-            if (c != null) {
-                Spacer(modifier = Modifier.height(10.dp))
-                KeyValueRow(
-                    stringResource(R.string.bench_score),
-                    String.format(Locale.US, "%.0f PTS", c.score),
-                    valueColor = BrutalistColors.SignalAccent
-                )
-                KeyValueRow(stringResource(R.string.bench_int_st), String.format(Locale.US, "%.2f GOPS", c.intSt))
-                KeyValueRow(stringResource(R.string.bench_int_mt), String.format(Locale.US, "%.2f GOPS", c.intMt))
-                KeyValueRow(stringResource(R.string.bench_vec_st), String.format(Locale.US, "%.2f GFLOPS", c.vecSt))
-                KeyValueRow(stringResource(R.string.bench_vec_mt), String.format(Locale.US, "%.2f GFLOPS", c.vecMt))
-                KeyValueRow(stringResource(R.string.bench_dram_lat), String.format(Locale.US, "%.1f ns", c.dramNs))
-            }
+            DeckChip(stringResource(R.string.bench_tab_suite), activeTab == 0, { activeTab = 0 })
+            DeckChip(stringResource(R.string.bench_tab_stress), activeTab == 1, { activeTab = 1 })
+            DeckChip("${stringResource(R.string.bench_tab_history)} (${historyLog.size})", activeTab == 2, { activeTab = 2 })
         }
 
-        // 02 // STORAGE I/O BENCHMARK
-        DeckPanel(
-            title = stringResource(R.string.bench_tag_storage),
-            ledColor = if (runningIo) BrutalistColors.SignalAccent else BrutalistColors.TitaniumTrace
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scroll),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            DeckButton(
-                text = if (runningIo) stringResource(R.string.stor_btn_scanning) else stringResource(R.string.bench_btn_io),
-                onClick = {
-                    if (runningIo || runningThrottle) return@DeckButton
-                    runningIo = true
-                    scope.launch {
-                        val sizeMb = if (perfController.isLowRamHardware) 24 else 48
-                        val arr = withContext(Dispatchers.IO) {
-                            NativeBridge.safeRunStorageBench(context.cacheDir.absolutePath, sizeMb)
-                        }
-                        if (arr.size >= 4) {
-                            val snap = StorageBenchSnapshot(arr[0], arr[1], arr[2], arr[3])
-                            ioSnap = snap
-                            appendHistory(
-                                String.format(
-                                    Locale.US,
-                                    "IO W:%.1f MB/s · R:%.1f MB/s · 4K:%.0f IOPS",
-                                    snap.seqWriteMbps, snap.seqReadMbps, snap.rand4kIops
-                                )
-                            )
-                        }
-                        runningIo = false
-                    }
-                },
-                enabled = !runningIo && !runningThrottle,
-                modifier = Modifier.fillMaxWidth()
-            )
-            val io = ioSnap
-            if (io != null) {
-                Spacer(modifier = Modifier.height(10.dp))
-                KeyValueRow(stringResource(R.string.bench_io_seq_w), String.format(Locale.US, "%.1f MB/s", io.seqWriteMbps))
-                KeyValueRow(stringResource(R.string.bench_io_seq_r), String.format(Locale.US, "%.1f MB/s", io.seqReadMbps))
-                KeyValueRow(stringResource(R.string.bench_io_rand), String.format(Locale.US, "%.1f MB/s", io.rand4kMbps))
-                KeyValueRow(stringResource(R.string.bench_io_iops), String.format(Locale.US, "%.0f IOPS", io.rand4kIops))
-            }
-        }
-
-        // 03 // THERMAL THROTTLING STRESS TEST (30S)
-        DeckPanel(
-            title = stringResource(R.string.bench_tag_throttle),
-            ledColor = if (runningThrottle) BrutalistColors.SignalAccent else BrutalistColors.StatusCaution
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                DeckButton(
-                    text = if (runningThrottle) {
-                        stringResource(R.string.bench_btn_stop)
-                    } else {
-                        stringResource(R.string.bench_btn_throttle)
-                    },
-                    onClick = {
-                        if (runningThrottle) {
-                            throttleJob?.cancel()
-                            throttleJob = null
-                            runningThrottle = false
-                        } else if (!runningCpu && !runningIo) {
-                            throttlePerfRing.clear()
-                            throttleTempRing.clear()
-                            throttlePeakGops = 0.0
-                            throttlePeakTemp = telemetry.cpuTempC
-                            throttleStabilityPct = 100f
-                            throttleSliceIdx = 0
-                            runningThrottle = true
-                            throttleJob = scope.launch {
-                                try {
-                                    val totalSlices = 40 // 40 * 750ms = 30s
-                                    var minPerfPct = 100f
-                                    var lastPerfPct = 100f
-                                    for (s in 1..totalSlices) {
-                                        if (!isActive) break
-                                        val gops = withContext(Dispatchers.Default) {
-                                            NativeBridge.safeRunThrottleSlice(telemetry.coreCount, 750)
+            when (activeTab) {
+                0 -> {
+                    DeckPanel(
+                        title = stringResource(R.string.bench_tag_cpu),
+                        ledColor = if (runningSuite) BrutalistColors.SignalAccent else BrutalistColors.StatusNominal
+                    ) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            DeckButton(
+                                text = if (runningSuite) stringResource(R.string.stor_btn_scanning) else stringResource(R.string.bench_btn_full),
+                                onClick = {
+                                    if (runningSuite || runningThrottle) return@DeckButton
+                                    runningSuite = true
+                                    scope.launch {
+                                        val sizeMb = if (perfController.isLowRamHardware) 24 else 48
+                                        val (cArr, ioArr) = withContext(Dispatchers.Default) {
+                                            val cpu = NativeBridge.safeRunCpuBenchmark(telemetry.coreCount, 420)
+                                            val io = NativeBridge.safeRunStorageBench(context.cacheDir.absolutePath, sizeMb)
+                                            Pair(cpu, io)
                                         }
-                                        if (gops > throttlePeakGops) throttlePeakGops = gops
-                                        val pct = if (throttlePeakGops > 0.0) {
-                                            ((gops / throttlePeakGops) * 100.0).toFloat().coerceIn(0f, 100f)
-                                        } else 100f
-                                        lastPerfPct = pct
-                                        if (pct < minPerfPct) minPerfPct = pct
-
-                                        val temp = telemetry.cpuTempC
-                                        if (temp > throttlePeakTemp) throttlePeakTemp = temp
-
-                                        throttlePerfRing.push(pct)
-                                        throttleTempRing.push(temp)
-                                        throttleStabilityPct = lastPerfPct
-                                        throttleSliceIdx = s
-                                        throttleTick++
+                                        if (cArr.size >= 13) {
+                                            val cs = CpuBenchSnapshot(
+                                                cArr[0], cArr[1], cArr[2], cArr[3],
+                                                cArr[4], cArr[5], cArr[6], cArr[7],
+                                                cArr[8], cArr[9], cArr[10], cArr[11], cArr[12]
+                                            )
+                                            cpuSnap = cs
+                                            if (ioArr.size >= 4) {
+                                                val ios = StorageBenchSnapshot(ioArr[0], ioArr[1], ioArr[2], ioArr[3])
+                                                ioSnap = ios
+                                                appendHistory(
+                                                    String.format(
+                                                        Locale.US,
+                                                        "SUITE %.0f pts · SHA %.0f/%.0f MB/s · RAM %.1f GB/s · IO %.0f/%.0f MB/s",
+                                                        cs.score, cs.shaSt, cs.shaMt, cs.ramCopy, ios.seqWriteMbps, ios.seqReadMbps
+                                                    )
+                                                )
+                                            }
+                                        }
+                                        runningSuite = false
                                     }
-                                    appendHistory(
-                                        String.format(
-                                            Locale.US,
-                                            "THROTTLE STAB %.1f%% (MIN %.1f%%) · PEAK %.1f°C · %.2f GOPS",
-                                            lastPerfPct, minPerfPct, throttlePeakTemp, throttlePeakGops
+                                },
+                                primary = true,
+                                enabled = !runningSuite && !runningThrottle,
+                                modifier = Modifier.weight(1f)
+                            )
+                            DeckButton(
+                                text = stringResource(R.string.bench_btn_io),
+                                onClick = {
+                                    if (runningSuite || runningThrottle) return@DeckButton
+                                    runningSuite = true
+                                    scope.launch {
+                                        val sizeMb = if (perfController.isLowRamHardware) 24 else 48
+                                        val ioArr = withContext(Dispatchers.IO) {
+                                            NativeBridge.safeRunStorageBench(context.cacheDir.absolutePath, sizeMb)
+                                        }
+                                        if (ioArr.size >= 4) {
+                                            ioSnap = StorageBenchSnapshot(ioArr[0], ioArr[1], ioArr[2], ioArr[3])
+                                        }
+                                        runningSuite = false
+                                    }
+                                },
+                                enabled = !runningSuite && !runningThrottle
+                            )
+                        }
+
+                        val c = cpuSnap
+                        if (c != null) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            KeyValueRow(
+                                stringResource(R.string.bench_score),
+                                String.format(Locale.US, "%.0f PTS", c.score),
+                                valueColor = BrutalistColors.SignalAccent
+                            )
+                            KeyValueRow(stringResource(R.string.bench_int_st), String.format(Locale.US, "%.2f / %.2f GOPS", c.intSt, c.intMt))
+                            KeyValueRow(stringResource(R.string.bench_vec_st), String.format(Locale.US, "%.2f / %.2f GFLOPS", c.vecSt, c.vecMt))
+                            KeyValueRow("SHA-256 (1T / ALL)", String.format(Locale.US, "%.1f / %.1f MB/s", c.shaSt, c.shaMt))
+                            KeyValueRow("LZ COMPRESS (1T / ALL)", String.format(Locale.US, "%.1f / %.1f MB/s", c.lzSt, c.lzMt))
+                            KeyValueRow("RAM R / W / COPY", String.format(Locale.US, "%.1f / %.1f / %.1f GB/s", c.ramRead, c.ramWrite, c.ramCopy))
+                            KeyValueRow(stringResource(R.string.bench_dram_lat), String.format(Locale.US, "%.1f ns", c.dramNs))
+
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(text = stringResource(R.string.bench_ref_compare), style = DeckType.IndexTag)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            val refs = listOf(
+                                "Snapdragon 8 Gen 3" to 4200.0,
+                                "Snapdragon 8 Gen 2" to 3350.0,
+                                "Snapdragon 7+ Gen 2" to 2450.0,
+                                "Helio G99" to 1100.0,
+                                "THIS DEVICE" to c.score
+                            ).sortedByDescending { it.second }
+                            val maxRef = refs.maxOf { it.second }.coerceAtLeast(1.0)
+                            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                for ((name, pts) in refs) {
+                                    val isMe = name == "THIS DEVICE"
+                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text(
+                                                text = name,
+                                                style = DeckType.Caption,
+                                                color = if (isMe) BrutalistColors.SignalAccent else BrutalistColors.BoneInk
+                                            )
+                                            Text(
+                                                text = String.format(Locale.US, "%.0f", pts),
+                                                style = DeckType.Caption,
+                                                color = if (isMe) BrutalistColors.SignalAccent else BrutalistColors.TungstenMute
+                                            )
+                                        }
+                                        SegmentedBarMeter(
+                                            fraction = (pts / maxRef).toFloat(),
+                                            segments = 20,
+                                            height = 5.dp,
+                                            activeColor = if (isMe) BrutalistColors.SignalAccent else BrutalistColors.TitaniumTrace
                                         )
-                                    )
-                                } finally {
-                                    runningThrottle = false
+                                    }
                                 }
                             }
                         }
-                    },
-                    primary = !runningThrottle,
-                    danger = runningThrottle,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+                    }
 
-            if (throttleSliceIdx > 0) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.bench_throttle_stab, throttleStabilityPct, throttlePeakTemp) +
-                        " (${throttleSliceIdx}/40)",
-                    style = DeckType.DataMono,
-                    color = if (throttleStabilityPct >= 85f) BrutalistColors.StatusNominal else BrutalistColors.StatusCaution
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                ZeroAllocLineChart(
-                    primaryBuffer = throttlePerfRing,
-                    secondaryBuffer = throttleTempRing,
-                    tickVersion = throttleTick,
-                    fixedMax = 105f,
-                    height = 84.dp,
-                    primaryColor = BrutalistColors.SignalAccent,
-                    secondaryColor = BrutalistColors.TitaniumTrace,
-                    isUltraLite = ultraLite
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("■ PERF % OF PEAK", style = DeckType.Caption, color = BrutalistColors.SignalAccent)
-                    Text("■ TEMP °C", style = DeckType.Caption, color = BrutalistColors.TitaniumTrace)
+                    val io = ioSnap
+                    if (io != null) {
+                        DeckPanel(
+                            title = stringResource(R.string.bench_tag_storage),
+                            ledColor = BrutalistColors.TitaniumTrace
+                        ) {
+                            KeyValueRow(stringResource(R.string.bench_io_seq_w), String.format(Locale.US, "%.1f MB/s", io.seqWriteMbps))
+                            KeyValueRow(stringResource(R.string.bench_io_seq_r), String.format(Locale.US, "%.1f MB/s", io.seqReadMbps))
+                            KeyValueRow(stringResource(R.string.bench_io_rand), String.format(Locale.US, "%.1f MB/s", io.rand4kMbps))
+                            KeyValueRow(stringResource(R.string.bench_io_iops), String.format(Locale.US, "%.0f IOPS", io.rand4kIops))
+                        }
+                    }
                 }
-            }
-        }
 
-        // 04 // BENCHMARK HISTORY LOG
-        DeckPanel(
-            title = stringResource(R.string.bench_tag_history),
-            ledColor = BrutalistColors.GraphiteFaint
-        ) {
-            if (historyLog.isEmpty()) {
-                Text(text = stringResource(R.string.bench_history_empty), style = DeckType.Body)
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    for (item in historyLog) {
-                        Text(
-                            text = item,
-                            style = DeckType.Caption,
-                            color = BrutalistColors.BoneInk,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
-                                .border(1.dp, BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
-                                .padding(6.dp)
+                1 -> {
+                    DeckPanel(
+                        title = stringResource(R.string.bench_tag_throttle),
+                        ledColor = if (runningThrottle) BrutalistColors.SignalAccent else BrutalistColors.StatusCaution
+                    ) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            DeckChip("15s", stressDurationSec == 15, { if (!runningThrottle) stressDurationSec = 15 }, modifier = Modifier.weight(1f))
+                            DeckChip("30s", stressDurationSec == 30, { if (!runningThrottle) stressDurationSec = 30 }, modifier = Modifier.weight(1f))
+                            DeckChip("60s", stressDurationSec == 60, { if (!runningThrottle) stressDurationSec = 60 }, modifier = Modifier.weight(1f))
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        DeckButton(
+                            text = if (runningThrottle) {
+                                stringResource(R.string.bench_btn_stop)
+                            } else {
+                                "${stringResource(R.string.bench_btn_throttle)} (${stressDurationSec}s)"
+                            },
+                            onClick = {
+                                if (runningThrottle) {
+                                    throttleJob?.cancel()
+                                    throttleJob = null
+                                    runningThrottle = false
+                                } else if (!runningSuite) {
+                                    throttlePerfRing.clear()
+                                    throttleTempRing.clear()
+                                    throttlePeakGops = 0.0
+                                    throttlePeakTemp = telemetry.cpuTempC
+                                    throttleStabilityPct = 100f
+                                    throttleSliceIdx = 0
+                                    val slices = ((stressDurationSec * 1000) / 750).coerceIn(10, 80)
+                                    throttleTotalSlices = slices
+                                    runningThrottle = true
+                                    throttleJob = scope.launch {
+                                        try {
+                                            var minPerfPct = 100f
+                                            var lastPerfPct = 100f
+                                            for (s in 1..slices) {
+                                                if (!isActive) break
+                                                val gops = withContext(Dispatchers.Default) {
+                                                    NativeBridge.safeRunThrottleSlice(telemetry.coreCount, 750)
+                                                }
+                                                if (gops > throttlePeakGops) throttlePeakGops = gops
+                                                val pct = if (throttlePeakGops > 0.0) {
+                                                    ((gops / throttlePeakGops) * 100.0).toFloat().coerceIn(0f, 100f)
+                                                } else 100f
+                                                lastPerfPct = pct
+                                                if (pct < minPerfPct) minPerfPct = pct
+
+                                                val temp = telemetry.cpuTempC
+                                                if (temp > throttlePeakTemp) throttlePeakTemp = temp
+
+                                                throttlePerfRing.push(pct)
+                                                throttleTempRing.push(temp)
+                                                throttleStabilityPct = lastPerfPct
+                                                throttleSliceIdx = s
+                                                throttleTick++
+                                            }
+                                            appendHistory(
+                                                String.format(
+                                                    Locale.US,
+                                                    "THROTTLE (${stressDurationSec}s) STAB %.1f%% (MIN %.1f%%) · PEAK %.1f°C · %.2f GOPS",
+                                                    lastPerfPct, minPerfPct, throttlePeakTemp, throttlePeakGops
+                                                )
+                                            )
+                                        } finally {
+                                            runningThrottle = false
+                                        }
+                                    }
+                                }
+                            },
+                            primary = !runningThrottle,
+                            danger = runningThrottle,
+                            modifier = Modifier.fillMaxWidth()
                         )
+
+                        if (throttleSliceIdx > 0) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.bench_throttle_stab, throttleStabilityPct, throttlePeakTemp) +
+                                    " ($throttleSliceIdx/$throttleTotalSlices)",
+                                style = DeckType.DataMono,
+                                color = if (throttleStabilityPct >= 85f) BrutalistColors.StatusNominal else BrutalistColors.StatusCaution
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            ZeroAllocLineChart(
+                                primaryBuffer = throttlePerfRing,
+                                secondaryBuffer = throttleTempRing,
+                                tickVersion = throttleTick,
+                                fixedMax = 105f,
+                                height = 88.dp,
+                                primaryColor = BrutalistColors.SignalAccent,
+                                secondaryColor = BrutalistColors.TitaniumTrace,
+                                isUltraLite = ultraLite
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("■ PERF % OF PEAK", style = DeckType.Caption, color = BrutalistColors.SignalAccent)
+                                Text("■ TEMP °C", style = DeckType.Caption, color = BrutalistColors.TitaniumTrace)
+                            }
+                        }
+                    }
+                }
+
+                else -> {
+                    DeckPanel(
+                        title = stringResource(R.string.bench_tag_history),
+                        ledColor = BrutalistColors.GraphiteFaint,
+                        headerAction = {
+                            if (historyLog.isNotEmpty()) {
+                                DeckChip(
+                                    text = stringResource(R.string.bench_btn_clear),
+                                    selected = false,
+                                    onClick = {
+                                        historyLog.clear()
+                                        saveHistory(context, emptyList())
+                                    }
+                                )
+                            }
+                        }
+                    ) {
+                        if (historyLog.isEmpty()) {
+                            Text(text = stringResource(R.string.bench_history_empty), style = DeckType.Body)
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                for (item in historyLog) {
+                                    Text(
+                                        text = item,
+                                        style = DeckType.Caption,
+                                        color = BrutalistColors.BoneInk,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
+                                            .border(1.dp, BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
+                                            .padding(6.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
+            Spacer(modifier = Modifier.height(6.dp))
         }
-        Spacer(modifier = Modifier.height(6.dp))
     }
 }
 

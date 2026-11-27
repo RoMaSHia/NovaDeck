@@ -20,6 +20,9 @@ object NativeBridge {
     external fun nativeGetCpuCoreCount(): Int
     external fun nativeReadCpuMetrics(outMetrics: FloatArray): Int
     external fun nativeReadMemAndThermal(outValues: LongArray): Int
+    external fun nativeReadSystemStats(outStats: DoubleArray): Int
+    external fun nativeReadActiveSockets(): String
+    external fun nativeMeasureTcpPing(host: String, port: Int, count: Int): DoubleArray
     external fun nativeScanStorage(rootPath: String, threadCount: Int): String
     external fun nativeCleanTempFiles(paths: Array<String>): Long
     external fun nativeRunCpuBenchmark(threads: Int, durationMs: Int): DoubleArray
@@ -54,6 +57,33 @@ object NativeBridge {
         }
     }
 
+    fun safeReadSystemStats(outStats: DoubleArray): Int {
+        if (!isNativeLoaded) return 0
+        return try {
+            nativeReadSystemStats(outStats)
+        } catch (_: Throwable) {
+            0
+        }
+    }
+
+    fun safeReadActiveSockets(): String {
+        if (!isNativeLoaded) return "RESTRICTED"
+        return try {
+            nativeReadActiveSockets()
+        } catch (_: Throwable) {
+            "RESTRICTED"
+        }
+    }
+
+    fun safeMeasureTcpPing(host: String, port: Int, count: Int = 4): DoubleArray {
+        if (!isNativeLoaded) return doubleArrayOf(-1.0, -1.0, -1.0)
+        return try {
+            nativeMeasureTcpPing(host, port, count)
+        } catch (_: Throwable) {
+            doubleArrayOf(-1.0, -1.0, -1.0)
+        }
+    }
+
     fun safeScanStorage(rootPath: String, threadCount: Int): String {
         if (!isNativeLoaded) return ""
         return try {
@@ -73,11 +103,11 @@ object NativeBridge {
     }
 
     fun safeRunCpuBenchmark(threads: Int, durationMs: Int): DoubleArray {
-        if (!isNativeLoaded) return doubleArrayOf(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        if (!isNativeLoaded) return DoubleArray(13)
         return try {
             nativeRunCpuBenchmark(threads, durationMs)
         } catch (_: Throwable) {
-            doubleArrayOf(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+            DoubleArray(13)
         }
     }
 

@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +39,7 @@ import io.novadeck.control.ui.theme.DeckType
 @Composable
 fun SettingsOverlay(
     perfController: PerformanceTierController,
+    onOpenUpdater: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val currentLang = LocaleController.currentLanguageTag()
@@ -98,7 +100,7 @@ fun SettingsOverlay(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             Text(
                 text = stringResource(R.string.settings_perf_label),
@@ -126,7 +128,7 @@ fun SettingsOverlay(
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.settings_perf_desc),
                 style = DeckType.Body
@@ -156,9 +158,39 @@ fun SettingsOverlay(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-            OtaUpdaterControls()
+            // Compact 1-line OTA update launcher
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
+                    .border(1.dp, BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.update_tag),
+                        style = DeckType.Caption,
+                        color = BrutalistColors.BoneInk
+                    )
+                    Text(
+                        text = "v${BuildConfig.VERSION_NAME}",
+                        style = DeckType.Caption,
+                        color = BrutalistColors.SignalAccent
+                    )
+                }
+                DeckButton(
+                    text = stringResource(R.string.update_btn_check),
+                    onClick = {
+                        onDismiss()
+                        onOpenUpdater()
+                    },
+                    primary = true
+                )
+            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -177,135 +209,176 @@ fun SettingsOverlay(
     }
 }
 
+/**
+ * Compact modal dialog for in-place OTA upgrades (matching StellarHub selfupdate.js).
+ */
 @Composable
-fun OtaUpdaterControls() {
+fun UpdateModalDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
     val status = AppUpdater.status
     val progress = AppUpdater.downloadProgress
 
-    Column(
+    LaunchedEffect(Unit) {
+        if (AppUpdater.status == UpdateStatus.IDLE || AppUpdater.status == UpdateStatus.ERROR) {
+            AppUpdater.checkForUpdate(context)
+        }
+    }
+
+    Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
-            .border(1.dp, BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
-            .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .fillMaxSize()
+            .background(BrutalistColors.ObsidianBg.copy(alpha = 0.88f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onDismiss
+            )
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = stringResource(R.string.update_tag),
-                style = DeckType.IndexTag
-            )
-            Text(
-                text = "v${BuildConfig.VERSION_NAME}",
-                style = DeckType.Caption,
-                color = BrutalistColors.SignalAccent
-            )
-        }
-
-        Text(
-            text = stringResource(R.string.update_desc),
-            style = DeckType.Caption,
-            color = BrutalistColors.TungstenMute
-        )
-
-        when (status) {
-            UpdateStatus.IDLE -> Unit
-            UpdateStatus.CHECKING -> Text(
-                text = stringResource(R.string.update_status_checking),
-                style = DeckType.DataMono,
-                color = BrutalistColors.TitaniumTrace
-            )
-            UpdateStatus.UP_TO_DATE -> Text(
-                text = stringResource(R.string.update_status_latest, AppUpdater.remoteVersionName),
-                style = DeckType.DataMono,
-                color = BrutalistColors.StatusNominal
-            )
-            UpdateStatus.UPDATE_AVAILABLE -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = stringResource(R.string.update_status_avail, AppUpdater.remoteVersionName),
-                    style = DeckType.DataMono,
-                    color = BrutalistColors.SignalAccent
-                )
-                if (AppUpdater.changelog.isNotBlank()) {
-                    Text(
-                        text = AppUpdater.changelog,
-                        style = DeckType.Caption,
-                        color = BrutalistColors.BoneInk
-                    )
-                }
-            }
-            UpdateStatus.DOWNLOADING -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = stringResource(R.string.update_status_downloading, progress),
-                    style = DeckType.DataMono,
-                    color = BrutalistColors.SignalAccent
-                )
-                SegmentedBarMeter(
-                    fraction = progress / 100f,
-                    segments = 20,
-                    height = 8.dp
+        DeckPanel(
+            title = stringResource(R.string.update_tag),
+            ledColor = when (status) {
+                UpdateStatus.UPDATE_AVAILABLE, UpdateStatus.DOWNLOADING -> BrutalistColors.SignalAccent
+                UpdateStatus.UP_TO_DATE, UpdateStatus.READY_TO_INSTALL -> BrutalistColors.StatusNominal
+                UpdateStatus.ERROR -> BrutalistColors.StatusFault
+                else -> BrutalistColors.TitaniumTrace
+            },
+            borderColor = BrutalistColors.ActiveBorder,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {}
+                ),
+            headerAction = {
+                DeckChip(
+                    text = stringResource(R.string.action_close),
+                    selected = false,
+                    onClick = onDismiss
                 )
             }
-            UpdateStatus.PERMISSION_REQUIRED -> Text(
-                text = stringResource(R.string.update_status_perm),
-                style = DeckType.DataMono,
-                color = BrutalistColors.StatusCaution
-            )
-            UpdateStatus.READY_TO_INSTALL -> Text(
-                text = stringResource(R.string.update_status_ready),
-                style = DeckType.DataMono,
-                color = BrutalistColors.StatusNominal
-            )
-            UpdateStatus.ERROR -> Text(
-                text = AppUpdater.errorMessage,
-                style = DeckType.Caption,
-                color = BrutalistColors.StatusFault
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            DeckButton(
-                text = stringResource(R.string.update_btn_check),
-                onClick = { AppUpdater.checkForUpdate(context) },
-                enabled = status != UpdateStatus.CHECKING && status != UpdateStatus.DOWNLOADING,
-                modifier = Modifier.weight(1f)
+            KeyValueRow(
+                label = stringResource(R.string.update_current_ver),
+                value = "v${BuildConfig.VERSION_NAME}"
             )
+            KeyValueRow(
+                label = stringResource(R.string.update_remote_ver),
+                value = "v${AppUpdater.remoteVersionName}",
+                valueColor = if (status == UpdateStatus.UPDATE_AVAILABLE) BrutalistColors.SignalAccent else BrutalistColors.BoneInk
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.update_desc),
+                style = DeckType.Caption,
+                color = BrutalistColors.TungstenMute
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
             when (status) {
-                UpdateStatus.PERMISSION_REQUIRED,
-                UpdateStatus.READY_TO_INSTALL -> {
-                    DeckButton(
-                        text = stringResource(R.string.update_btn_install_now),
-                        onClick = { AppUpdater.installApkInPlace(context) },
-                        primary = true,
-                        modifier = Modifier.weight(1f)
+                UpdateStatus.IDLE -> Unit
+                UpdateStatus.CHECKING -> Text(
+                    text = stringResource(R.string.update_status_checking),
+                    style = DeckType.DataMono,
+                    color = BrutalistColors.TitaniumTrace
+                )
+                UpdateStatus.UP_TO_DATE -> Text(
+                    text = stringResource(R.string.update_status_latest, AppUpdater.remoteVersionName),
+                    style = DeckType.DataMono,
+                    color = BrutalistColors.StatusNominal
+                )
+                UpdateStatus.UPDATE_AVAILABLE -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = stringResource(R.string.update_status_avail, AppUpdater.remoteVersionName),
+                        style = DeckType.DataMono,
+                        color = BrutalistColors.SignalAccent
+                    )
+                    if (AppUpdater.changelog.isNotBlank()) {
+                        Text(
+                            text = AppUpdater.changelog,
+                            style = DeckType.Caption,
+                            color = BrutalistColors.BoneInk
+                        )
+                    }
+                }
+                UpdateStatus.DOWNLOADING -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = stringResource(R.string.update_status_downloading, progress),
+                        style = DeckType.DataMono,
+                        color = BrutalistColors.SignalAccent
+                    )
+                    SegmentedBarMeter(
+                        fraction = progress / 100f,
+                        segments = 20,
+                        height = 8.dp
                     )
                 }
-                UpdateStatus.UPDATE_AVAILABLE -> {
-                    DeckButton(
-                        text = stringResource(R.string.update_btn_download),
-                        onClick = { AppUpdater.downloadAndInstall(context) },
-                        primary = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                else -> {
-                    DeckButton(
-                        text = stringResource(R.string.update_btn_reinstall),
-                        onClick = { AppUpdater.downloadAndInstall(context) },
-                        primary = status == UpdateStatus.UP_TO_DATE,
-                        enabled = status != UpdateStatus.DOWNLOADING,
-                        modifier = Modifier.weight(1f)
-                    )
+                UpdateStatus.PERMISSION_REQUIRED -> Text(
+                    text = stringResource(R.string.update_status_perm),
+                    style = DeckType.DataMono,
+                    color = BrutalistColors.StatusCaution
+                )
+                UpdateStatus.READY_TO_INSTALL -> Text(
+                    text = stringResource(R.string.update_status_ready),
+                    style = DeckType.DataMono,
+                    color = BrutalistColors.StatusNominal
+                )
+                UpdateStatus.ERROR -> Text(
+                    text = AppUpdater.errorMessage,
+                    style = DeckType.Caption,
+                    color = BrutalistColors.StatusFault
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                DeckButton(
+                    text = stringResource(R.string.update_btn_check),
+                    onClick = { AppUpdater.checkForUpdate(context) },
+                    enabled = status != UpdateStatus.CHECKING && status != UpdateStatus.DOWNLOADING,
+                    modifier = Modifier.weight(1f)
+                )
+                when (status) {
+                    UpdateStatus.PERMISSION_REQUIRED,
+                    UpdateStatus.READY_TO_INSTALL -> {
+                        DeckButton(
+                            text = stringResource(R.string.update_btn_install_now),
+                            onClick = { AppUpdater.installApkInPlace(context) },
+                            primary = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    UpdateStatus.UPDATE_AVAILABLE -> {
+                        DeckButton(
+                            text = stringResource(R.string.update_btn_download),
+                            onClick = { AppUpdater.downloadAndInstall(context) },
+                            primary = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    else -> {
+                        DeckButton(
+                            text = stringResource(R.string.update_btn_reinstall),
+                            onClick = { AppUpdater.downloadAndInstall(context) },
+                            primary = status == UpdateStatus.UP_TO_DATE,
+                            enabled = status != UpdateStatus.DOWNLOADING,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
+            Spacer(modifier = Modifier.height(6.dp))
+            DeckButton(
+                text = stringResource(R.string.update_btn_open_releases),
+                onClick = { AppUpdater.openReleasesPage(context) },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }

@@ -45,7 +45,9 @@ object AppUpdater {
     private const val GITHUB_LATEST_API =
         "https://api.github.com/repos/RoMaSHia/NovaDeck/releases/latest"
     private const val FALLBACK_APK_URL =
-        "https://github.com/RoMaSHia/NovaDeck/raw/main/dist/NovaDeck-release.apk"
+        "https://github.com/RoMaSHia/NovaDeck/releases/latest/download/NovaDeck-release.apk"
+    const val RELEASES_PAGE_URL =
+        "https://github.com/RoMaSHia/NovaDeck/releases"
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var activeJob: Job? = null
@@ -191,6 +193,16 @@ object AppUpdater {
                     status = UpdateStatus.ERROR
                 }
             }
+        }
+    }
+
+    fun openReleasesPage(context: Context) {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(RELEASES_PAGE_URL)).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            context.startActivity(intent)
+        } catch (_: Throwable) {
         }
     }
 

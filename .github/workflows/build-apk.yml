@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Build APK (arm64-v8a + armeabi-v7a)
+    name: Build APK & Publish Release (arm64-v8a + armeabi-v7a)
     runs-on: ubuntu-latest
 
     steps:
@@ -26,13 +26,23 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install Android SDK Platform, CMake, and NDK
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager \
+          SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          if [ -z "$SDK_ROOT" ]; then
+            SDK_ROOT="/usr/local/lib/android/sdk"
+          fi
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          SDKMAN="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMAN" ]; then
+            mkdir -p "$SDK_ROOT/cmdline-tools"
+            curl -sL "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -o /tmp/cmdtools.zip
+            unzip -q -o /tmp/cmdtools.zip -d "$SDK_ROOT/cmdline-tools"
+            mv "$SDK_ROOT/cmdline-tools/cmdline-tools" "$SDK_ROOT/cmdline-tools/latest"
+          fi
+          yes | "$SDKMAN" --licenses >/dev/null 2>&1 || true
+          "$SDKMAN" \
             "platform-tools" \
             "platforms;android-34" \
             "build-tools;34.0.0" \
@@ -75,25 +85,32 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace
 
-      - name: Package APK outputs
+      - name: Package APK outputs and SHA-256
         run: |
           mkdir -p dist
           cp app/build/outputs/apk/debug/app-debug.apk dist/NovaDeck-debug.apk
           cp app/build/outputs/apk/release/app-release.apk dist/NovaDeck-release.apk
+          (cd dist && sha256sum NovaDeck-release.apk > NovaDeck-release.apk.sha256)
+          (cd dist && sha256sum NovaDeck-debug.apk > NovaDeck-debug.apk.sha256)
           ls -lh dist/
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: NovaDeck-APKs
-          path: dist/*.apk
+          path: dist/*
           retention-days: 30
 
-      - name: Publish to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish GitHub Release
+        if: github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v1.1.0' }}
+          name: NovaDeck ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v1.1.0' }}
+          make_latest: true
+          generate_release_notes: true
           files: |
             dist/NovaDeck-release.apk
+            dist/NovaDeck-release.apk.sha256
             dist/NovaDeck-debug.apk
-          generate_release_notes: true
+            dist/NovaDeck-debug.apk.sha256

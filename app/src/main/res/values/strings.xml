@@ -28,12 +28,15 @@
     <string name="tier_badge_full">TIER: FULL</string>
     <string name="tier_badge_lite">TIER: ULTRA-LITE</string>
 
-    <!-- In-Place OTA Updater -->
-    <string name="update_tag">04 // IN-PLACE SELF-UPDATER</string>
+    <!-- In-Place OTA Updater Modal -->
+    <string name="update_tag">OTA // IN-PLACE SELF-UPDATER</string>
+    <string name="update_current_ver">INSTALLED</string>
+    <string name="update_remote_ver">LATEST ON GITHUB</string>
     <string name="update_btn_check">CHECK UPDATE</string>
     <string name="update_btn_download">UPDATE IN-PLACE</string>
     <string name="update_btn_reinstall">REINSTALL LATEST</string>
     <string name="update_btn_install_now">INSTALL APK NOW</string>
+    <string name="update_btn_open_releases">OPEN GITHUB RELEASES</string>
     <string name="update_status_checking">QUERYING GITHUB REPOSITORY…</string>
     <string name="update_status_latest">UP TO DATE (v%1$s)</string>
     <string name="update_status_avail">NEW VERSION AVAILABLE: v%1$s</string>
@@ -44,8 +47,9 @@
 
     <!-- Home Screen -->
     <string name="home_tag_identity">01 // HARDWARE IDENTITY</string>
-    <string name="home_tag_telemetry">02 // LIVE TELEMETRY MATRIX</string>
-    <string name="home_tag_modules">03 // DIAGNOSTIC MODULES</string>
+    <string name="home_tag_telemetry">02 // LIVE VITALS MATRIX</string>
+    <string name="home_tag_components">03 // COMPONENTS (TAP TO INSPECT)</string>
+    <string name="home_tag_review">04 // TO REVIEW &amp; QUICK ACTIONS</string>
     <string name="home_health_index">SYSTEM HEALTH</string>
     <string name="home_model">MODEL</string>
     <string name="home_soc">SOC / BOARD</string>
@@ -58,21 +62,38 @@
     <string name="home_ram_load">MEMORY</string>
     <string name="home_battery">BATTERY</string>
     <string name="home_storage">STORAGE</string>
-    <string name="home_mod_monitor_desc">Per-core clocks, mA current, RAM, RX/TX</string>
-    <string name="home_mod_storage_desc">C++ MT scanner, heavy files, duplicates</string>
-    <string name="home_mod_apps_desc">Batch uninstall, cache jump, APK backup</string>
-    <string name="home_mod_hardware_desc">Screen, audio, mic, vibrator, 60Hz sensors</string>
-    <string name="home_mod_privacy_desc">Root/encryption check, sensitive perms</string>
-    <string name="home_mod_bench_desc">C++ ALU/NEON, I/O speed, throttle curve</string>
+    <string name="home_display_hz">DISPLAY / GPU</string>
+    <string name="home_network">NETWORK</string>
+    <string name="home_rev_storage">Storage &amp; Optimizer</string>
+    <string name="home_rev_security">Integrity &amp; Root Check</string>
+    <string name="home_rev_apps">Package Inventory &amp; Backups</string>
+    <string name="home_rev_bench">C++ CPU / RAM / Throttling</string>
+    <string name="home_mod_monitor_desc">Per-core clocks, GPU FPS, RAM, TCP Ping</string>
+    <string name="home_mod_storage_desc">Treemap, C++ MT scanner, Optimizer</string>
+    <string name="home_mod_apps_desc">Icons, deep info, leftovers, APK backup</string>
+    <string name="home_mod_hardware_desc">Display, audio phase, keys, Camera2, sensors</string>
+    <string name="home_mod_privacy_desc">SELinux, open ports, sensitive perms</string>
+    <string name="home_mod_bench_desc">SHA-256, LZ, NEON, RAM BW, throttling</string>
     <string name="status_nominal">NOMINAL</string>
     <string name="status_elevated">ELEVATED</string>
     <string name="status_critical">CRITICAL</string>
 
     <!-- Live Monitor -->
-    <string name="mon_tag_cpu">01 // CPU CORES &amp; LOAD</string>
-    <string name="mon_tag_batt">02 // BATTERY TELEMETRY</string>
+    <string name="mon_tab_cpu">CPU</string>
+    <string name="mon_tab_gpu">GPU/DISP</string>
+    <string name="mon_tab_ram">RAM/PROC</string>
+    <string name="mon_tab_net">NET/PING</string>
+    <string name="mon_tab_batt">BATTERY</string>
+    <string name="mon_live">LIVE</string>
+    <string name="mon_paused">PAUSED</string>
+    <string name="mon_tag_cpu">01 // CPU CORES &amp; LOADAVG</string>
+    <string name="mon_tag_gpu">02 // GPU &amp; DISPLAY FRAME PACING</string>
     <string name="mon_tag_mem">03 // MEMORY &amp; ZRAM</string>
-    <string name="mon_tag_net">04 // NETWORK LINK</string>
+    <string name="mon_tag_procs">03B // ACTIVE PROCESS MONITOR</string>
+    <string name="mon_procs_restricted">Process list restricted by Android sandbox on this ROM.</string>
+    <string name="mon_tag_net">04 // NETWORK LINK &amp; TCP PING</string>
+    <string name="mon_btn_ping">RUN NATIVE C++ TCP PING</string>
+    <string name="mon_tag_batt">05 // BATTERY TELEMETRY</string>
     <string name="mon_proc_ok">NATIVE /proc/stat</string>
     <string name="mon_proc_fallback">SELINUX FALLBACK (FREQ EST.)</string>
     <string name="mon_core_fmt">CPU%1$d</string>
@@ -98,20 +119,27 @@
     <string name="mon_net_ip">LOCAL IP</string>
     <string name="mon_net_type">TRANSPORT</string>
     <string name="mon_net_rssi">WI-FI SIGNAL</string>
-    <string name="mon_net_offline">OFFLINE</string>
 
     <!-- Storage Checker -->
     <string name="stor_tag_overview">01 // PARTITION &amp; C++ ENGINE</string>
     <string name="stor_tag_cats">02 // CATEGORY BREAKDOWN</string>
-    <string name="stor_tag_details">03 // HEAVY FILES &amp; DUPLICATES</string>
+    <string name="stor_tag_treemap">02 // SQUARIFIED TREEMAP &amp; TYPES</string>
+    <string name="stor_tag_details">03 // FOLDERS, HEAVY FILES &amp; OPTIMIZER</string>
     <string name="stor_btn_scan">RUN C++ SCAN</string>
     <string name="stor_btn_scanning">SCANNING…</string>
     <string name="stor_btn_clean">CLEAN TEMP / CACHE</string>
+    <string name="stor_btn_clean_sel">CLEAN SELECTED</string>
     <string name="stor_btn_grant_full">FULL STORAGE ACCESS</string>
     <string name="stor_perm_hint">Android 11+ restricts raw scanning of third-party folders without All-Files access. MediaStore + accessible paths work automatically.</string>
+    <string name="stor_tab_folders">FOLDERS</string>
     <string name="stor_tab_heavy">HEAVY FILES</string>
     <string name="stor_tab_dups">DUPLICATES</string>
-    <string name="stor_tab_temp">RESIDUAL / TEMP</string>
+    <string name="stor_tab_optimizer">OPTIMIZER</string>
+    <string name="stor_no_folders">Grant All-Files access to view top directory rollup.</string>
+    <string name="stor_opt_cache">App Internal &amp; External Cache</string>
+    <string name="stor_opt_temp">Residual .tmp / .log / .bak Files</string>
+    <string name="stor_opt_thumbs">Thumbnail Caches (.thumbnails)</string>
+    <string name="stor_opt_dups">Redundant Duplicate File Copies</string>
     <string name="stor_cat_photo">PHOTOS</string>
     <string name="stor_cat_video">VIDEOS</string>
     <string name="stor_cat_audio">AUDIO</string>
@@ -120,7 +148,7 @@
     <string name="stor_cat_cache">CACHE / TEMP</string>
     <string name="stor_cat_other">OTHER / ARCHIVES</string>
     <string name="stor_scan_stats">%1$d files · %2$d dirs · %3$d ms</string>
-    <string name="stor_empty_scan">Press RUN C++ SCAN to analyze storage with multi-threaded native walker &amp; FNV-1a duplicate detector.</string>
+    <string name="stor_empty_scan">Press RUN C++ SCAN to generate the squarified Treemap, folder rollup, and FNV-1a duplicate report.</string>
     <string name="stor_no_dups">No exact duplicate files (&gt;= 64 KB) found in accessible storage.</string>
     <string name="stor_cleaned_msg">Reclaimed %1$s of residual/temporary files.</string>
     <string name="stor_dup_group">%1$d copies · wasted %2$s</string>
@@ -128,51 +156,74 @@
     <!-- App Manager -->
     <string name="apps_tag_controls">01 // PACKAGE INVENTORY</string>
     <string name="apps_search_hint">Search app name or package…</string>
-    <string name="apps_filter_user">USER APPS</string>
+    <string name="apps_filter_user">USER</string>
     <string name="apps_filter_system">SYSTEM</string>
+    <string name="apps_filter_leftovers">LEFTOVERS</string>
+    <string name="apps_no_leftovers">No leftover APK installers or orphaned app folders detected.</string>
     <string name="apps_sort_size">SIZE</string>
     <string name="apps_sort_name">NAME</string>
     <string name="apps_batch_uninstall">UNINSTALL (%1$d)</string>
     <string name="apps_btn_backup">EXPORT APK</string>
+    <string name="apps_btn_share">SHARE APK</string>
     <string name="apps_btn_cache">CACHE / INFO</string>
     <string name="apps_btn_uninstall">UNINSTALL</string>
+    <string name="apps_btn_del">DELETE</string>
     <string name="apps_backup_ok">Exported to Downloads/NovaDeck_Backups/%1$s</string>
     <string name="apps_backup_fail">Failed to export APK: %1$s</string>
     <string name="apps_loading">Indexing installed packages…</string>
-    <string name="apps_count_fmt">%1$d packages · %2$s total APK footprint</string>
+    <string name="apps_count_fmt">%1$d packages · %2$s</string>
 
     <!-- Hardware & Sensor Tester -->
-    <string name="hw_tag_display">01 // DISPLAY &amp; TOUCH</string>
-    <string name="hw_tag_audio">02 // AUDIO &amp; ACTUATORS</string>
-    <string name="hw_tag_sensors">03 // LIVE 60HZ SENSOR BUS</string>
-    <string name="hw_btn_dead_pixel">DEAD PIXEL TEST</string>
-    <string name="hw_btn_multitouch">MULTITOUCH TEST</string>
+    <string name="hw_tab_display">DISPLAY</string>
+    <string name="hw_tab_audio">AUDIO/MIC</string>
+    <string name="hw_tab_keys">KEYS</string>
+    <string name="hw_tab_sensors">CAM/SENSORS</string>
+    <string name="hw_tag_display">01 // DISPLAY &amp; TOUCH DIAGNOSTICS</string>
+    <string name="hw_tag_audio">02 // AUDIO SYNTH, MIC &amp; ACTUATORS</string>
+    <string name="hw_tag_keys">03 // HARDWARE KEYS &amp; GAMEPAD TEST</string>
+    <string name="hw_keys_hint">Press physical buttons (Volume, Media, D-Pad, Gamepad, or Keyboard) to inspect live keycodes and scan codes.</string>
+    <string name="hw_keys_empty">Waiting for hardware key input…</string>
+    <string name="hw_tag_cameras">04A // CAMERA2 HARDWARE INVENTORY</string>
+    <string name="hw_tag_sensors">04B // LIVE 60HZ SENSOR BUS</string>
+    <string name="hw_tag_sensor_list">04C // ALL DEVICE SENSORS</string>
+    <string name="hw_btn_dead_pixel">DEAD PIXELS</string>
+    <string name="hw_btn_multitouch">MULTITOUCH + HZ</string>
+    <string name="hw_btn_gradient">GRADIENT &amp; OLED</string>
+    <string name="hw_btn_motion">120HZ MOTION</string>
     <string name="hw_dead_pixel_hint">TAP TO CYCLE COLORS · DOUBLE TAP TO EXIT</string>
-    <string name="hw_multitouch_hint">TOUCH SCREEN WITH MULTIPLE FINGERS · TAP EXIT TOP-RIGHT</string>
     <string name="hw_exit">EXIT</string>
     <string name="hw_audio_left">LEFT CH</string>
     <string name="hw_audio_right">RIGHT CH</string>
     <string name="hw_audio_stereo">STEREO</string>
-    <string name="hw_audio_stop">STOP TONE</string>
+    <string name="hw_audio_phase">OUT-OF-PHASE</string>
+    <string name="hw_audio_sweep">20-16K SWEEP</string>
+    <string name="hw_audio_noise">WHITE NOISE</string>
+    <string name="hw_audio_stop">STOP AUDIO</string>
     <string name="hw_freq_fmt">TONE GENERATOR: %1$d Hz</string>
     <string name="hw_mic_start">START MIC METER</string>
     <string name="hw_mic_stop">STOP MIC</string>
     <string name="hw_mic_level">MIC LEVEL: %1$.1f dBFS</string>
-    <string name="hw_vibrate_pulse">VIBRATE PULSE</string>
+    <string name="hw_vibrate_pulse">VIBRO PULSE</string>
     <string name="hw_vibrate_pattern">PATTERN</string>
-    <string name="hw_torch_on">FLASHLIGHT: ON</string>
-    <string name="hw_torch_off">FLASHLIGHT: OFF</string>
-    <string name="hw_torch_na">NO FLASH UNIT</string>
+    <string name="hw_torch_on">TORCH: ON</string>
+    <string name="hw_torch_off">TORCH: OFF</string>
+    <string name="hw_torch_na">NO FLASH</string>
     <string name="hw_sensor_accel">ACCELEROMETER (m/s²)</string>
     <string name="hw_sensor_gyro">GYROSCOPE (rad/s)</string>
     <string name="hw_sensor_mag">MAGNETOMETER (μT)</string>
     <string name="hw_sensor_light">AMBIENT LIGHT (lux)</string>
     <string name="hw_sensor_prox">PROXIMITY (cm)</string>
-    <string name="hw_sensor_unavail">SENSOR UNAVAILABLE ON DEVICE</string>
+    <string name="hw_sensor_baro">BAROMETER (hPa)</string>
+    <string name="hw_sensor_unavail">SENSOR UNAVAILABLE</string>
 
     <!-- Privacy & Security Audit -->
-    <string name="priv_tag_posture">01 // SYSTEM INTEGRITY AUDIT</string>
-    <string name="priv_tag_perms">02 // SENSITIVE PERMISSIONS</string>
+    <string name="priv_tab_integrity">INTEGRITY</string>
+    <string name="priv_tab_ports">OPEN PORTS</string>
+    <string name="priv_tab_perms">PERMISSIONS</string>
+    <string name="priv_tag_posture">01 // SYSTEM INTEGRITY &amp; SELINUX AUDIT</string>
+    <string name="priv_tag_ports">02 // ACTIVE TCP/UDP SOCKETS</string>
+    <string name="priv_ports_restricted">/proc/net/tcp is restricted by SELinux on Android 10+ for non-root apps.</string>
+    <string name="priv_tag_perms">03 // SENSITIVE PERMISSIONS &amp; OVERLAYS</string>
     <string name="priv_score_label">INTEGRITY SCORE</string>
     <string name="priv_check_enc">STORAGE ENCRYPTION</string>
     <string name="priv_check_root">ROOT / MAGISK / SU</string>
@@ -190,24 +241,29 @@
     <string name="priv_perm_mic">MICROPHONE</string>
     <string name="priv_perm_loc">LOCATION / BG</string>
     <string name="priv_perm_sms">SMS / CALL LOG</string>
+    <string name="priv_perm_overlay">DRAW OVER APPS</string>
+    <string name="priv_perm_install">INSTALL APKS</string>
     <string name="priv_btn_revoke">MANAGE PERMS</string>
     <string name="priv_no_apps">No user apps hold this sensitive permission.</string>
 
     <!-- Benchmark & Stress Test -->
-    <string name="bench_tag_cpu">01 // NATIVE C++ CPU &amp; MEMORY</string>
+    <string name="bench_tab_suite">FULL SUITE</string>
+    <string name="bench_tab_stress">THROTTLE</string>
+    <string name="bench_tab_history">HISTORY</string>
+    <string name="bench_tag_cpu">01 // NATIVE C++ SUITE (ALU, NEON, SHA-256, LZ, RAM)</string>
     <string name="bench_tag_storage">02 // STORAGE I/O BENCHMARK</string>
     <string name="bench_tag_throttle">03 // THERMAL THROTTLING STRESS</string>
     <string name="bench_tag_history">04 // BENCHMARK LOG</string>
-    <string name="bench_btn_cpu">RUN CPU + RAM BENCH</string>
-    <string name="bench_btn_io">RUN STORAGE I/O</string>
-    <string name="bench_btn_throttle">START 30S THROTTLE TEST</string>
+    <string name="bench_btn_full">RUN FULL C++ SUITE</string>
+    <string name="bench_btn_io">I/O ONLY</string>
+    <string name="bench_btn_throttle">START THROTTLE STRESS</string>
     <string name="bench_btn_stop">STOP TEST</string>
-    <string name="bench_int_st">INT 1T (GOPS)</string>
-    <string name="bench_int_mt">INT ALL-CORE</string>
-    <string name="bench_vec_st">NEON 1T (GFLOPS)</string>
-    <string name="bench_vec_mt">NEON ALL-CORE</string>
+    <string name="bench_btn_clear">CLEAR</string>
+    <string name="bench_int_st">INT ALU (1T / ALL)</string>
+    <string name="bench_vec_st">NEON FMA (1T / ALL)</string>
     <string name="bench_dram_lat">DRAM LATENCY</string>
-    <string name="bench_score">COMPOSITE INDEX</string>
+    <string name="bench_score">NOVADECK SCORE</string>
+    <string name="bench_ref_compare">REFERENCE SOC COMPARISON</string>
     <string name="bench_io_seq_w">SEQ WRITE</string>
     <string name="bench_io_seq_r">SEQ READ</string>
     <string name="bench_io_rand">RND 4K READ</string>

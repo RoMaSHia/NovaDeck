@@ -1,8 +1,8 @@
 package io.novadeck.control
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -36,11 +37,14 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.novadeck.control.core.AppUpdater
 import io.novadeck.control.core.LocaleController
 import io.novadeck.control.core.PerformanceTierController
 import io.novadeck.control.core.TelemetryEngine
+import io.novadeck.control.core.UpdateStatus
 import io.novadeck.control.ui.components.SettingsOverlay
 import io.novadeck.control.ui.components.TechnicalGridBackground
+import io.novadeck.control.ui.components.UpdateModalDialog
 import io.novadeck.control.ui.navigation.DeckRoute
 import io.novadeck.control.ui.screens.AppManagerScreen
 import io.novadeck.control.ui.screens.BenchmarkScreen
@@ -88,7 +92,9 @@ private fun NovaDeckShell(
     perfController: PerformanceTierController
 ) {
     var activeRoute by remember { mutableStateOf(DeckRoute.HOME) }
+    var monitorInitialTab by remember { mutableIntStateOf(0) }
     var showSettings by remember { mutableStateOf(false) }
+    var showUpdater by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -103,9 +109,9 @@ private fun NovaDeckShell(
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            // Top Brutalist Header Bar
             TopDeckBar(
                 perfController = perfController,
+                onOpenUpdater = { showUpdater = true },
                 onOpenSettings = { showSettings = true }
             )
 
@@ -116,17 +122,21 @@ private fun NovaDeckShell(
                     .background(BrutalistColors.HairlineBorder)
             )
 
-            // Active Module Viewport
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 when (activeRoute) {
                     DeckRoute.HOME -> HomeScreen(
                         telemetry = telemetry,
                         perfController = perfController,
-                        onNavigate = { activeRoute = it }
+                        onNavigate = { route -> activeRoute = route },
+                        onOpenMonitorTab = { tab ->
+                            monitorInitialTab = tab
+                            activeRoute = DeckRoute.MONITOR
+                        }
                     )
                     DeckRoute.MONITOR -> LiveMonitorScreen(
                         telemetry = telemetry,
-                        perfController = perfController
+                        perfController = perfController,
+                        initialTab = monitorInitialTab
                     )
                     DeckRoute.STORAGE -> StorageCheckerScreen(telemetry = telemetry)
                     DeckRoute.APPS -> AppManagerScreen()
@@ -146,7 +156,6 @@ private fun NovaDeckShell(
                     .background(BrutalistColors.HairlineBorder)
             )
 
-            // Bottom Brutalist Hardware Rail
             BottomDeckNav(
                 activeRoute = activeRoute,
                 onSelect = { activeRoute = it }
@@ -156,8 +165,13 @@ private fun NovaDeckShell(
         if (showSettings) {
             SettingsOverlay(
                 perfController = perfController,
+                onOpenUpdater = { showUpdater = true },
                 onDismiss = { showSettings = false }
             )
+        }
+
+        if (showUpdater) {
+            UpdateModalDialog(onDismiss = { showUpdater = false })
         }
     }
 }
@@ -165,9 +179,12 @@ private fun NovaDeckShell(
 @Composable
 private fun TopDeckBar(
     perfController: PerformanceTierController,
+    onOpenUpdater: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
     val currentLang = LocaleController.currentLanguageTag()
+    val hasUpdate = AppUpdater.status == UpdateStatus.UPDATE_AVAILABLE
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -205,9 +222,31 @@ private fun TopDeckBar(
         }
 
         Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Compact version + OTA modal trigger
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(if (hasUpdate) BrutalistColors.SignalAccent else BrutalistColors.ObsidianBg)
+                    .border(
+                        1.dp,
+                        if (hasUpdate) BrutalistColors.SignalAccent else BrutalistColors.HairlineBorder,
+                        RoundedCornerShape(2.dp)
+                    )
+                    .clickable(onClick = onOpenUpdater)
+                    .padding(horizontal = 7.dp, vertical = 5.dp)
+            ) {
+                Text(
+                    text = "v${BuildConfig.VERSION_NAME.removeSuffix("-debug")} ↻",
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.sp,
+                    color = if (hasUpdate) BrutalistColors.ObsidianBg else BrutalistColors.TungstenMute
+                )
+            }
+
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(2.dp))

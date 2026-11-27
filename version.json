@@ -1,7 +1,8 @@
 {
-  "versionCode": 1,
-  "versionName": "1.0.0",
-  "apkUrl": "https://github.com/RoMaSHia/NovaDeck/raw/main/dist/NovaDeck-release.apk",
+  "versionCode": 2,
+  "versionName": "1.1.0",
+  "apkUrl": "https://github.com/RoMaSHia/NovaDeck/releases/latest/download/NovaDeck-release.apk",
   "releaseUrl": "https://github.com/RoMaSHia/NovaDeck/releases/latest/download/NovaDeck-release.apk",
-  "changelog": "Initial release of NovaDeck (C++17 NDK + Brutalist Dark UI + In-Place OTA Updater)"
+  "rawApkUrl": "https://github.com/RoMaSHia/NovaDeck/raw/main/dist/NovaDeck-release.apk",
+  "changelog": "v1.1.0: Full StellarHub feature parity (Squarified Storage Treemap, Open Ports & SELinux Audit, Native SHA-256/LZ/RAM BW Benchmark, TCP Ping, Camera2/Keys Tester, Compact OTA Modal & GitHub Releases)"
 }
