@@ -35,6 +35,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -116,13 +118,16 @@ private data class SensorDescriptor(
 )
 
 @Composable
-fun HardwareTesterScreen(perfController: PerformanceTierController) {
+fun HardwareTesterScreen(
+    perfController: PerformanceTierController,
+    onSwipeLockChange: (Boolean) -> Unit = {}
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val scroll = rememberScrollState()
     val ultraLite = perfController.isUltraLite
 
-    var activeTab by remember { mutableIntStateOf(0) } // 0=Display, 1=Audio, 2=Keys, 3=Cameras & Sensors
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { 4 })
+    val activeTab = pagerState.currentPage
 
     // Fullscreen display overlays
     var showDeadPixelTest by remember { mutableStateOf(false) }
@@ -130,6 +135,14 @@ fun HardwareTesterScreen(perfController: PerformanceTierController) {
     var showGradientTest by remember { mutableStateOf(false) }
     var showMotionTest by remember { mutableStateOf(false) }
     var showMultiTouchTest by remember { mutableStateOf(false) }
+
+    val anyFullscreenOpen = showDeadPixelTest || showGradientTest || showMotionTest || showMultiTouchTest
+    LaunchedEffect(anyFullscreenOpen) {
+        onSwipeLockChange(anyFullscreenOpen)
+    }
+    DisposableEffect(Unit) {
+        onDispose { onSwipeLockChange(false) }
+    }
 
     // Audio synthesizer (0=L, 1=R, 2=Stereo, 3=Out-of-phase, 4=Sweep, 5=WhiteNoise)
     var tonePlaying by remember { mutableStateOf(false) }
@@ -627,19 +640,25 @@ fun HardwareTesterScreen(perfController: PerformanceTierController) {
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
-            DeckChip(stringResource(R.string.hw_tab_display), activeTab == 0, { activeTab = 0 })
-            DeckChip(stringResource(R.string.hw_tab_audio), activeTab == 1, { activeTab = 1 })
-            DeckChip(stringResource(R.string.hw_tab_keys), activeTab == 2, { activeTab = 2 })
-            DeckChip(stringResource(R.string.hw_tab_sensors), activeTab == 3, { activeTab = 3 })
+            DeckChip(stringResource(R.string.hw_tab_display), activeTab == 0, { scope.launch { pagerState.animateScrollToPage(0) } })
+            DeckChip(stringResource(R.string.hw_tab_audio), activeTab == 1, { scope.launch { pagerState.animateScrollToPage(1) } })
+            DeckChip(stringResource(R.string.hw_tab_keys), activeTab == 2, { scope.launch { pagerState.animateScrollToPage(2) } })
+            DeckChip(stringResource(R.string.hw_tab_sensors), activeTab == 3, { scope.launch { pagerState.animateScrollToPage(3) } })
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scroll),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            when (activeTab) {
+        HorizontalPager(
+            state = pagerState,
+            beyondViewportPageCount = 0,
+            userScrollEnabled = !anyFullscreenOpen,
+            modifier = Modifier.weight(1f).fillMaxWidth()
+        ) { page ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                when (page) {
                 0 -> {
                     // DISPLAY & TOUCH
                     DeckPanel(
@@ -890,6 +909,7 @@ fun HardwareTesterScreen(perfController: PerformanceTierController) {
                 }
             }
             Spacer(modifier = Modifier.height(6.dp))
+            }
         }
     }
 }

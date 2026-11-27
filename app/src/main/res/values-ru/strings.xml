@@ -270,4 +270,74 @@
     <string name="bench_io_iops">4K IOPS</string>
     <string name="bench_throttle_stab">СТАБИЛЬНОСТЬ: %1$.1f%% · ПИК ТЕМП.: %2$.1f°C</string>
     <string name="bench_history_empty">История замеров пока пуста.</string>
+
+    <!-- Умный оптимизатор и диагностика устройства -->
+    <string name="opt_tag_advisor">02 // УМНЫЙ ОПТИМИЗАТОР И СОВЕТНИК</string>
+    <string name="opt_btn_analyze">АНАЛИЗ</string>
+    <string name="opt_btn_optimize_all">ОПТИМИЗИРОВАТЬ ВСЁ</string>
+    <string name="opt_lbl_wrong">ЧТО НЕ ТАК:</string>
+    <string name="opt_lbl_do">ЧТО СДЕЛАТЬ:</string>
+    <string name="opt_done_banner">Остановлено %1$d процессов · Освобождено %2$s ОЗУ · Очищено %3$s мусора.</string>
+    <string name="opt_find_ram_title">Высокая нагрузка на ОЗУ (%1$d%%)</string>
+    <string name="opt_find_ram_wrong">Свободно %1$s ОЗУ, а в фоне висит %2$d программ из автозагрузки.</string>
+    <string name="opt_find_ram_do">Выгрузить фоновые процессы и очистить временные кэши.</string>
+    <string name="opt_btn_trim_now">ОСВОБОДИТЬ ОЗУ</string>
+    <string name="opt_find_stor_title">Накопитель и остаточный кэш (%1$d%%)</string>
+    <string name="opt_find_stor_wrong">Найдено %1$s кэша/миниатюр для очистки (свободно %2$s).</string>
+    <string name="opt_find_stor_do">Откройте Оптимизатор памяти и удалите остаточные файлы.</string>
+    <string name="opt_find_auto_title">В автозагрузке %1$d приложений</string>
+    <string name="opt_find_auto_wrong">%1$d приложений из автозагрузки прямо сейчас работают в памяти.</string>
+    <string name="opt_find_auto_do">Перейдите во вкладку Автозагрузка, чтобы остановить и ограничить лишние.</string>
+    <string name="opt_find_bloat_title">Найдено %1$d ненужных / блоат-приложений</string>
+    <string name="opt_find_bloat_wrong">Обнаружены неиспользуемые пакеты, OEM-реклама или трекеры в автозапуске.</string>
+    <string name="opt_find_bloat_do">Откройте вкладку «Ненужные» и удалите или отключите лишние.</string>
+    <string name="opt_find_scan_title">Включено фоновое сканирование Wi-Fi / BLE</string>
+    <string name="opt_find_scan_wrong">Галочки фонового поиска сетей включены — телефон передаёт геолокацию даже при выключенном Wi-Fi/BT.</string>
+    <string name="opt_find_scan_do">Снимите галочки «Поиск сетей Wi-Fi» и «Поиск Bluetooth» в настройках геолокации.</string>
+    <string name="opt_btn_disable_scan">СНЯТЬ ГАЛОЧКИ</string>
+    <string name="opt_find_tel_title">Отправка данных и телеметрия (%1$d Ad-ID · %2$d OEM)</string>
+    <string name="opt_find_tel_wrong">Оставлены галочки отправки диагностики, трекеры Advertising ID или системная аналитика OEM.</string>
+    <string name="opt_find_tel_do">Откройте Защита → Отправка данных, снимите галочки и удалите рекламный ID.</string>
+    <string name="opt_find_therm_title">Нагрев или быстрый разряд (%1$.1f°C)</string>
+    <string name="opt_find_therm_wrong">Заряд %1$d%% при частоте экрана %2$d Гц или повышенной температуре чипа.</string>
+    <string name="opt_find_therm_do">Проверьте ток батареи и включите режим Ultra-Lite или экономию заряда.</string>
+    <string name="opt_find_ok_title">Система работает оптимально</string>
+    <string name="opt_find_ok_wrong">Критических утечек телеметрии, перегрузки ОЗУ и лишнего хлама не найдено.</string>
+    <string name="opt_find_ok_do">Можно периодически запускать анализ или проверить скорость в Бенчмарке.</string>
+
+    <!-- Вкладки Автозагрузка и Ненужные приложения -->
+    <string name="apps_filter_autorun">АВТОЗАГРУЗКА</string>
+    <string name="apps_filter_bloat">НЕНУЖНЫЕ</string>
+    <string name="apps_btn_kill_all_auto">ОСТАНОВИТЬ ВСЕ ИЗ АВТОЗАГРУЗКИ (%1$d)</string>
+    <string name="apps_killed_msg">Остановлено фоновых процессов: %1$d.</string>
+    <string name="apps_usage_hint">Выдайте «Доступ к истории использования», чтобы телефон показал точное число дней простоя (OEM-блоат и трекеры видны сразу).</string>
+    <string name="apps_btn_grant_usage">ВЫДАТЬ ДОСТУП К СТАТИСТИКЕ</string>
+    <string name="apps_no_bloat">Телефон не обнаружил ненужных или рекламных приложений.</string>
+    <string name="apps_autorun_running">● АКТИВНО В ОЗУ · Автозапуск при старте</string>
+    <string name="apps_autorun_idle">○ В ОЖИДАНИИ · Прописано в автозапуске</string>
+    <string name="apps_btn_stop_restrict">СТОП + ОГРАНИЧИТЬ</string>
+    <string name="apps_reason_bloat">OEM / Рекламный блоат</string>
+    <string name="apps_reason_unused">Не используется %1$d дн.</string>
+    <string name="apps_reason_dormant">Простаивает и тяжёлое</string>
+    <string name="apps_reason_tracker_auto">Трекер рекламы + Автозапуск</string>
+    <string name="apps_reason_heavy">Тяжёлое (%1$d МБ)</string>
+
+    <!-- Аудит отправки данных / телеметрии (галочки) -->
+    <string name="priv_tab_telemetry">ОТПРАВКА ДАННЫХ</string>
+    <string name="priv_tag_telemetry">02B // ОТПРАВКА ДАННЫХ И ГАЛОЧКИ ТЕЛЕМЕТРИИ</string>
+    <string name="priv_tel_intro">Проверяет системные галочки и службы, которые незаметно отправляют статистику устройства, координаты Wi-Fi/BLE и рекламный ID третьим лицам.</string>
+    <string name="priv_tel_wifi_scan">ФОНОВЫЙ ПОИСК WI-FI</string>
+    <string name="priv_tel_wifi_scan_desc">Сканирует точки Wi-Fi для определения местоположения, даже если Wi-Fi выключен.</string>
+    <string name="priv_tel_ble_scan">ФОНОВЫЙ ПОИСК BLUETOOTH</string>
+    <string name="priv_tel_ble_scan_desc">Сканирует BLE-маячки в фоне, даже когда Bluetooth отключён.</string>
+    <string name="priv_tel_diag">ОТПРАВКА ДИАГНОСТИКИ И ЛОГОВ</string>
+    <string name="priv_tel_diag_desc">Отправляет отчёты об использовании и сбоях, если при настройке не снята галочка.</string>
+    <string name="priv_tel_notif">ЧТЕНИЕ УВЕДОМЛЕНИЙ</string>
+    <string name="priv_tel_a11y">ЧТЕНИЕ ЭКРАНА (СПЕЦВОЗМОЖНОСТИ)</string>
+    <string name="priv_tel_adid">СБОР РЕКЛАМНОГО ID (AD_ID)</string>
+    <string name="priv_tel_adid_desc">Приложения, считывающие ваш рекламный идентификатор для профилирования.</string>
+    <string name="priv_tel_oem_daemons">СИСТЕМНАЯ ТЕЛЕМЕТРИЯ OEM</string>
+    <string name="priv_tel_bgloc">ОТПРАВКА ГЕОЛОКАЦИИ 24/7 В ФОНЕ</string>
+    <string name="priv_btn_uncheck">СНЯТЬ ГАЛОЧКУ</string>
+    <string name="priv_btn_reset_ad">УДАЛИТЬ AD ID</string>
 </resources>

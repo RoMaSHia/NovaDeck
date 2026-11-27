@@ -1,5 +1,6 @@
 package io.novadeck.control.ui.screens
 
+import android.app.ActivityManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -18,6 +19,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +34,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -62,6 +66,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.core.graphics.drawable.toBitmap
 import io.novadeck.control.R
+import io.novadeck.control.core.AppRiskProfile
+import io.novadeck.control.core.DeviceOptimizerEngine
 import io.novadeck.control.core.NativeBridge
 import io.novadeck.control.core.formatBytesCompact
 import io.novadeck.control.ui.components.DeckButton
@@ -99,25 +105,38 @@ private data class LeftoverEntry(
     val name: String,
     val path: String,
     val sizeBytes: Long,
-    val kind: String // "APK" or "ORPHAN DIR"
+    val kind: String
 )
 
 private val IconMemoryCache = LruCache<String, ImageBitmap>(80)
 
 @Composable
-fun AppManagerScreen() {
+fun AppManagerScreen(
+    requestedTab: Int = 0,
+    requestNonce: Int = 0
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     var loading by remember { mutableStateOf(true) }
     var allApps by remember { mutableStateOf<List<InstalledAppEntry>>(emptyList()) }
+    var riskProfiles by remember { mutableStateOf<Map<String, AppRiskProfile>>(emptyMap()) }
     var leftovers by remember { mutableStateOf<List<LeftoverEntry>>(emptyList()) }
-    var activeTab by remember { mutableIntStateOf(0) } // 0=User, 1=System, 2=Leftovers & APKs
     var sortBySize by remember { mutableStateOf(true) }
     var query by remember { mutableStateOf("") }
     var feedbackBanner by remember { mutableStateOf<String?>(null) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
     var inspectedApp by remember { mutableStateOf<InstalledAppEntry?>(null) }
+
+    // 0=USER, 1=SYSTEM, 2=AUTORUN, 3=UNUSED/BLOAT, 4=LEFTOVERS
+    val pagerState = rememberPagerState(initialPage = requestedTab.coerceIn(0, 4), pageCount = { 5 })
+    LaunchedEffect(requestNonce, requestedTab) {
+        val target = requestedTab.coerceIn(0, 4)
+        if (pagerState.currentPage != target) {
+            pagerState.animateScrollToPage(target)
+        }
+    }
+    val activeTab = pagerState.currentPage
 
     val selectedPackages = remember { mutableStateListOf<String>() }
     val uninstallQueue = remember { mutableStateListOf<String>() }
@@ -143,29 +162,46 @@ fun AppManagerScreen() {
 
     LaunchedEffect(refreshTrigger) {
         loading = true
-        val (apps, left) = withContext(Dispatchers.IO) {
+        val (apps, profiles, left) = withContext(Dispatchers.IO) {
             val loaded = loadInstalledApps(context)
+            val prof = DeviceOptimizerEngine.analyzePackages(context)
             val pkgSet = loaded.mapTo(HashSet()) { it.packageName }
-            Pair(loaded, scanLeftoversAndApks(pkgSet))
+            Triple(loaded, prof, scanLeftoversAndApks(pkgSet))
         }
         allApps = apps
+        riskProfiles = profiles
         leftovers = left
         loading = false
     }
 
-    val filtered = remember(allApps, activeTab, sortBySize, query) {
-        if (activeTab == 2) return@remember emptyList()
-        val wantSystem = activeTab == 1
+    fun filteredForPage(page: Int): List<InstalledAppEntry> {
         val q = query.trim().lowercase()
-        val list = allApps.filter { app ->
-            (app.isSystem == wantSystem) &&
-                (q.isEmpty() || app.label.lowercase().contains(q) || app.packageName.lowercase().contains(q))
+        val base = when (page) {
+            0 -> allApps.filter { !it.isSystem }
+            1 -> allApps.filter { it.isSystem }
+            2 -> allApps.filter { riskProfiles[it.packageName]?.isAutorun == true }
+            3 -> allApps.filter { riskProfiles[it.packageName]?.unnecessaryReasons?.isNotEmpty() == true }
+            else -> emptyList()
+        }.filter { app ->
+            q.isEmpty() || app.label.lowercase().contains(q) || app.packageName.lowercase().contains(q)
         }
-        if (sortBySize) list.sortedByDescending { it.apkSizeBytes }
-        else list.sortedBy { it.label.lowercase() }
+        return when {
+            page == 2 -> base.sortedWith(
+                compareByDescending<InstalledAppEntry> { riskProfiles[it.packageName]?.isRunning == true }
+                    .thenByDescending { it.apkSizeBytes }
+            )
+            page == 3 -> base.sortedWith(
+                compareByDescending<InstalledAppEntry> { riskProfiles[it.packageName]?.unnecessaryReasons?.size ?: 0 }
+                    .thenByDescending { it.apkSizeBytes }
+            )
+            sortBySize -> base.sortedByDescending { it.apkSizeBytes }
+            else -> base.sortedBy { it.label.lowercase() }
+        }
     }
 
-    val totalFilteredSize = remember(filtered) { filtered.sumOf { it.apkSizeBytes } }
+    val hasUsageAccess = remember(refreshTrigger) { DeviceOptimizerEngine.hasUsageStatsPermission(context) }
+    val autorunCount = remember(riskProfiles) { riskProfiles.values.count { it.isAutorun } }
+    val bloatCount = remember(riskProfiles) { riskProfiles.values.count { it.unnecessaryReasons.isNotEmpty() } }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -178,15 +214,7 @@ fun AppManagerScreen() {
                 title = stringResource(R.string.apps_tag_controls),
                 ledColor = BrutalistColors.SignalAccent,
                 headerAction = {
-                    Text(
-                        text = if (activeTab == 2) {
-                            "${leftovers.size} items"
-                        } else {
-                            stringResource(R.string.apps_count_fmt, filtered.size, formatBytesCompact(totalFilteredSize))
-                        },
-                        style = DeckType.Caption,
-                        color = BrutalistColors.BoneInk
-                    )
+                    DeckChip(text = "↻", selected = false, onClick = { refreshTrigger++ })
                 }
             ) {
                 Box(
@@ -216,49 +244,23 @@ fun AppManagerScreen() {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
-                    DeckChip(
-                        text = stringResource(R.string.apps_filter_user),
-                        selected = activeTab == 0,
-                        onClick = { activeTab = 0; selectedPackages.clear() },
-                        modifier = Modifier.weight(1f)
-                    )
-                    DeckChip(
-                        text = stringResource(R.string.apps_filter_system),
-                        selected = activeTab == 1,
-                        onClick = { activeTab = 1; selectedPackages.clear() },
-                        modifier = Modifier.weight(1f)
-                    )
-                    DeckChip(
-                        text = stringResource(R.string.apps_filter_leftovers),
-                        selected = activeTab == 2,
-                        onClick = { activeTab = 2; selectedPackages.clear() },
-                        modifier = Modifier.weight(1f)
-                    )
+                    DeckChip(stringResource(R.string.apps_filter_user), activeTab == 0, { scope.launch { pagerState.animateScrollToPage(0) } })
+                    DeckChip(stringResource(R.string.apps_filter_system), activeTab == 1, { scope.launch { pagerState.animateScrollToPage(1) } })
+                    DeckChip("${stringResource(R.string.apps_filter_autorun)} ($autorunCount)", activeTab == 2, { scope.launch { pagerState.animateScrollToPage(2) } })
+                    DeckChip("${stringResource(R.string.apps_filter_bloat)} ($bloatCount)", activeTab == 3, { scope.launch { pagerState.animateScrollToPage(3) } })
+                    DeckChip("${stringResource(R.string.apps_filter_leftovers)} (${leftovers.size})", activeTab == 4, { scope.launch { pagerState.animateScrollToPage(4) } })
                 }
 
-                if (activeTab != 2) {
+                if (activeTab == 0 || activeTab == 1) {
                     Spacer(modifier = Modifier.height(6.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        DeckChip(
-                            text = stringResource(R.string.apps_sort_size),
-                            selected = sortBySize,
-                            onClick = { sortBySize = true },
-                            accent = BrutalistColors.TitaniumTrace,
-                            modifier = Modifier.weight(1f)
-                        )
-                        DeckChip(
-                            text = stringResource(R.string.apps_sort_name),
-                            selected = !sortBySize,
-                            onClick = { sortBySize = false },
-                            accent = BrutalistColors.TitaniumTrace,
-                            modifier = Modifier.weight(1f)
-                        )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        DeckChip(stringResource(R.string.apps_sort_size), sortBySize, { sortBySize = true }, accent = BrutalistColors.TitaniumTrace, modifier = Modifier.weight(1f))
+                        DeckChip(stringResource(R.string.apps_sort_name), !sortBySize, { sortBySize = false }, accent = BrutalistColors.TitaniumTrace, modifier = Modifier.weight(1f))
                     }
                 }
 
@@ -278,11 +280,7 @@ fun AppManagerScreen() {
 
                 if (feedbackBanner != null) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = feedbackBanner ?: "",
-                        style = DeckType.Caption,
-                        color = BrutalistColors.StatusNominal
-                    )
+                    Text(text = feedbackBanner ?: "", style = DeckType.Caption, color = BrutalistColors.StatusNominal)
                 }
             }
 
@@ -290,204 +288,254 @@ fun AppManagerScreen() {
                 DeckPanel {
                     Text(text = stringResource(R.string.apps_loading), style = DeckType.Body)
                 }
-            } else if (activeTab == 2) {
-                if (leftovers.isEmpty()) {
-                    DeckPanel {
-                        Text(text = stringResource(R.string.apps_no_leftovers), style = DeckType.Body)
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        items(leftovers, key = { it.path }) { item ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(BrutalistColors.CarbonSurface, RoundedCornerShape(2.dp))
-                                    .border(1.dp, BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
-                                    .padding(10.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                                    Text(
-                                        text = "[${item.kind}] ${item.name}",
-                                        style = DeckType.DataMono,
-                                        color = BrutalistColors.SignalAccent,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = "${item.path} · ${formatBytesCompact(item.sizeBytes)}",
-                                        style = DeckType.Caption,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                                if (item.kind == "APK") {
-                                    DeckButton(
-                                        text = stringResource(R.string.apps_btn_del),
-                                        onClick = {
-                                            scope.launch {
-                                                val freed = withContext(Dispatchers.IO) {
-                                                    NativeBridge.safeCleanTempFiles(arrayOf(item.path))
-                                                }
-                                                feedbackBanner = "Deleted ${formatBytesCompact(freed)}"
-                                                refreshTrigger++
-                                            }
-                                        },
-                                        danger = true
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    items(filtered, key = { it.packageName }) { app ->
-                        val isSelected = selectedPackages.contains(app.packageName)
-                        val iconBitmap by produceState<ImageBitmap?>(
-                            initialValue = IconMemoryCache.get(app.packageName),
-                            key1 = app.packageName
-                        ) {
-                            if (value == null) {
-                                value = withContext(Dispatchers.IO) {
-                                    try {
-                                        val bmp = context.packageManager
-                                            .getApplicationIcon(app.packageName)
-                                            .toBitmap(64, 64)
-                                            .asImageBitmap()
-                                        IconMemoryCache.put(app.packageName, bmp)
-                                        bmp
-                                    } catch (_: Throwable) {
-                                        null
+                HorizontalPager(
+                    state = pagerState,
+                    beyondViewportPageCount = 0,
+                    modifier = Modifier.weight(1f).fillMaxWidth()
+                ) { page ->
+                    if (page == 4) {
+                        if (leftovers.isEmpty()) {
+                            DeckPanel {
+                                Text(text = stringResource(R.string.apps_no_leftovers), style = DeckType.Body)
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                items(leftovers, key = { it.path }) { item ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(BrutalistColors.CarbonSurface, RoundedCornerShape(2.dp))
+                                            .border(1.dp, BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
+                                            .padding(10.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                            Text("[${item.kind}] ${item.name}", style = DeckType.DataMono, color = BrutalistColors.SignalAccent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text("${item.path} · ${formatBytesCompact(item.sizeBytes)}", style = DeckType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        }
+                                        if (item.kind == "APK") {
+                                            DeckButton(
+                                                text = stringResource(R.string.apps_btn_del),
+                                                onClick = {
+                                                    scope.launch {
+                                                        val freed = withContext(Dispatchers.IO) { NativeBridge.safeCleanTempFiles(arrayOf(item.path)) }
+                                                        feedbackBanner = "Deleted ${formatBytesCompact(freed)}"
+                                                        refreshTrigger++
+                                                    }
+                                                },
+                                                danger = true
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
-
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(BrutalistColors.CarbonSurface, RoundedCornerShape(2.dp))
-                                .border(
-                                    1.dp,
-                                    if (isSelected) BrutalistColors.SignalAccent else BrutalistColors.HairlineBorder,
-                                    RoundedCornerShape(2.dp)
+                    } else {
+                        val pageList = remember(allApps, riskProfiles, page, sortBySize, query) {
+                            filteredForPage(page)
+                        }
+                        Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (page == 2 && pageList.isNotEmpty()) {
+                                val runningCount = pageList.count { riskProfiles[it.packageName]?.isRunning == true }
+                                DeckButton(
+                                    text = stringResource(R.string.apps_btn_kill_all_auto, runningCount),
+                                    onClick = {
+                                        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+                                        var k = 0
+                                        for (a in pageList) {
+                                            if (riskProfiles[a.packageName]?.isRunning == true && a.packageName != context.packageName) {
+                                                try {
+                                                    am?.killBackgroundProcesses(a.packageName)
+                                                    k++
+                                                } catch (_: Throwable) {
+                                                }
+                                            }
+                                        }
+                                        feedbackBanner = context.getString(R.string.apps_killed_msg, k)
+                                        refreshTrigger++
+                                    },
+                                    primary = true,
+                                    modifier = Modifier.fillMaxWidth()
                                 )
-                                .clickable { inspectedApp = app }
-                                .padding(10.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.weight(1f).padding(end = 8.dp)
+                            }
+
+                            if (page == 3 && !hasUsageAccess) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
+                                        .border(1.dp, BrutalistColors.StatusCaution, RoundedCornerShape(2.dp))
+                                        .padding(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    if (!app.isSystem && app.packageName != context.packageName) {
-                                        Box(
+                                    Text(text = stringResource(R.string.apps_usage_hint), style = DeckType.Caption, color = BrutalistColors.StatusCaution)
+                                    DeckButton(
+                                        text = stringResource(R.string.apps_btn_grant_usage),
+                                        onClick = { DeviceOptimizerEngine.openUsageAccessSettings(context) },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+
+                            if (page == 3 && pageList.isEmpty()) {
+                                DeckPanel {
+                                    Text(text = stringResource(R.string.apps_no_bloat), style = DeckType.Body)
+                                }
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    items(pageList, key = { "${page}_${it.packageName}" }) { app ->
+                                        val profile = riskProfiles[app.packageName]
+                                        val isSelected = selectedPackages.contains(app.packageName)
+                                        val iconBitmap by produceState<ImageBitmap?>(
+                                            initialValue = IconMemoryCache.get(app.packageName),
+                                            key1 = app.packageName
+                                        ) {
+                                            if (value == null) {
+                                                value = withContext(Dispatchers.IO) {
+                                                    try {
+                                                        val bmp = context.packageManager
+                                                            .getApplicationIcon(app.packageName)
+                                                            .toBitmap(64, 64)
+                                                            .asImageBitmap()
+                                                        IconMemoryCache.put(app.packageName, bmp)
+                                                        bmp
+                                                    } catch (_: Throwable) {
+                                                        null
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        Column(
                                             modifier = Modifier
-                                                .size(18.dp)
-                                                .background(
-                                                    if (isSelected) BrutalistColors.SignalAccent else BrutalistColors.ObsidianBg,
-                                                    RoundedCornerShape(2.dp)
-                                                )
+                                                .fillMaxWidth()
+                                                .background(BrutalistColors.CarbonSurface, RoundedCornerShape(2.dp))
                                                 .border(
                                                     1.dp,
-                                                    if (isSelected) BrutalistColors.SignalAccent else BrutalistColors.ActiveBorder,
+                                                    if (isSelected) BrutalistColors.SignalAccent else BrutalistColors.HairlineBorder,
                                                     RoundedCornerShape(2.dp)
                                                 )
-                                                .clickable {
-                                                    if (isSelected) selectedPackages.remove(app.packageName)
-                                                    else selectedPackages.add(app.packageName)
-                                                },
-                                            contentAlignment = Alignment.Center
+                                                .clickable { inspectedApp = app }
+                                                .padding(10.dp)
                                         ) {
-                                            if (isSelected) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    modifier = Modifier.weight(1f).padding(end = 8.dp)
+                                                ) {
+                                                    if (!app.isSystem && app.packageName != context.packageName) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(18.dp)
+                                                                .background(
+                                                                    if (isSelected) BrutalistColors.SignalAccent else BrutalistColors.ObsidianBg,
+                                                                    RoundedCornerShape(2.dp)
+                                                                )
+                                                                .border(
+                                                                    1.dp,
+                                                                    if (isSelected) BrutalistColors.SignalAccent else BrutalistColors.ActiveBorder,
+                                                                    RoundedCornerShape(2.dp)
+                                                                )
+                                                                .clickable {
+                                                                    if (isSelected) selectedPackages.remove(app.packageName)
+                                                                    else selectedPackages.add(app.packageName)
+                                                                },
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            if (isSelected) {
+                                                                Text("X", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = BrutalistColors.ObsidianBg)
+                                                            }
+                                                        }
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                    }
+                                                    if (iconBitmap != null) {
+                                                        Image(bitmap = iconBitmap!!, contentDescription = app.label, modifier = Modifier.size(30.dp))
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                    }
+                                                    Column {
+                                                        Text(app.label, style = DeckType.Label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                                        Text("${app.packageName} · v${app.versionName}", style = DeckType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                                    }
+                                                }
+                                                Text(formatBytesCompact(app.apkSizeBytes), style = DeckType.DataMono, color = BrutalistColors.SignalAccent)
+                                            }
+
+                                            // Autorun or Bloatware diagnostic tags
+                                            if (page == 2 && profile != null) {
+                                                Spacer(modifier = Modifier.height(5.dp))
                                                 Text(
-                                                    text = "X",
-                                                    fontFamily = FontFamily.Monospace,
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 11.sp,
-                                                    color = BrutalistColors.ObsidianBg
+                                                    text = if (profile.isRunning) {
+                                                        stringResource(R.string.apps_autorun_running)
+                                                    } else {
+                                                        stringResource(R.string.apps_autorun_idle)
+                                                    },
+                                                    style = DeckType.Caption,
+                                                    color = if (profile.isRunning) BrutalistColors.StatusCaution else BrutalistColors.TungstenMute
+                                                )
+                                            } else if (page == 3 && profile != null && profile.unnecessaryReasons.isNotEmpty()) {
+                                                Spacer(modifier = Modifier.height(5.dp))
+                                                Text(
+                                                    text = profile.unnecessaryReasons.joinToString(" · "),
+                                                    style = DeckType.Caption,
+                                                    color = BrutalistColors.StatusCaution
                                                 )
                                             }
-                                        }
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                    }
-                                    if (iconBitmap != null) {
-                                        Image(
-                                            bitmap = iconBitmap!!,
-                                            contentDescription = app.label,
-                                            modifier = Modifier.size(30.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                    }
-                                    Column {
-                                        Text(
-                                            text = app.label,
-                                            style = DeckType.Label,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Text(
-                                            text = "${app.packageName} · v${app.versionName}",
-                                            style = DeckType.Caption,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                }
-                                Text(
-                                    text = formatBytesCompact(app.apkSizeBytes),
-                                    style = DeckType.DataMono,
-                                    color = BrutalistColors.SignalAccent
-                                )
-                            }
 
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                DeckButton(
-                                    text = stringResource(R.string.apps_btn_backup),
-                                    onClick = {
-                                        scope.launch {
-                                            val res = withContext(Dispatchers.IO) { exportApkToDownloads(context, app) }
-                                            feedbackBanner = res
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                if (page == 2) {
+                                                    DeckButton(
+                                                        text = stringResource(R.string.apps_btn_stop_restrict),
+                                                        onClick = {
+                                                            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+                                                            try { am?.killBackgroundProcesses(app.packageName) } catch (_: Throwable) {}
+                                                            DeviceOptimizerEngine.openAppDetails(context, app.packageName)
+                                                            refreshTrigger++
+                                                        },
+                                                        primary = true,
+                                                        modifier = Modifier.weight(1f)
+                                                    )
+                                                } else {
+                                                    DeckButton(
+                                                        text = stringResource(R.string.apps_btn_backup),
+                                                        onClick = {
+                                                            scope.launch {
+                                                                val res = withContext(Dispatchers.IO) { exportApkToDownloads(context, app) }
+                                                                feedbackBanner = res
+                                                            }
+                                                        },
+                                                        modifier = Modifier.weight(1f)
+                                                    )
+                                                    DeckButton(
+                                                        text = stringResource(R.string.apps_btn_cache),
+                                                        onClick = { DeviceOptimizerEngine.openAppDetails(context, app.packageName) },
+                                                        modifier = Modifier.weight(1f)
+                                                    )
+                                                }
+                                                if (!app.isSystem && app.packageName != context.packageName) {
+                                                    DeckButton(
+                                                        text = stringResource(R.string.apps_btn_uninstall),
+                                                        onClick = {
+                                                            uninstallLauncher.launch(Intent(Intent.ACTION_DELETE, Uri.parse("package:${app.packageName}")))
+                                                        },
+                                                        danger = true
+                                                    )
+                                                }
+                                            }
                                         }
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
-                                DeckButton(
-                                    text = stringResource(R.string.apps_btn_cache),
-                                    onClick = {
-                                        val i = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                            data = Uri.parse("package:${app.packageName}")
-                                        }
-                                        context.startActivity(i)
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
-                                if (!app.isSystem && app.packageName != context.packageName) {
-                                    DeckButton(
-                                        text = stringResource(R.string.apps_btn_uninstall),
-                                        onClick = {
-                                            uninstallLauncher.launch(
-                                                Intent(Intent.ACTION_DELETE, Uri.parse("package:${app.packageName}"))
-                                            )
-                                        },
-                                        danger = true
-                                    )
+                                    }
                                 }
                             }
                         }
@@ -496,7 +544,6 @@ fun AppManagerScreen() {
             }
         }
 
-        // Deep Package Inspector Modal
         val app = inspectedApp
         if (app != null) {
             PackageInspectorModal(
@@ -508,17 +555,8 @@ fun AppManagerScreen() {
                         feedbackBanner = res
                     }
                 },
-                onShare = {
-                    scope.launch {
-                        shareApkFile(context, app)
-                    }
-                },
-                onOpenSystemInfo = {
-                    val i = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                        data = Uri.parse("package:${app.packageName}")
-                    }
-                    context.startActivity(i)
-                }
+                onShare = { scope.launch { shareApkFile(context, app) } },
+                onOpenSystemInfo = { DeviceOptimizerEngine.openAppDetails(context, app.packageName) }
             )
         }
     }
@@ -587,10 +625,7 @@ private fun PackageInspectorModal(
             Text("PATH: ${app.apkPath}", style = DeckType.Caption, color = BrutalistColors.TungstenMute)
 
             Spacer(modifier = Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 DeckButton(stringResource(R.string.apps_btn_backup), onClick = onExport, primary = true, modifier = Modifier.weight(1f))
                 DeckButton(stringResource(R.string.apps_btn_share), onClick = onShare, modifier = Modifier.weight(1f))
                 DeckButton(stringResource(R.string.apps_btn_cache), onClick = onOpenSystemInfo, modifier = Modifier.weight(1f))
@@ -673,7 +708,6 @@ private fun scanLeftoversAndApks(installedPkgs: Set<String>): List<LeftoverEntry
     val results = mutableListOf<LeftoverEntry>()
     val ext = Environment.getExternalStorageDirectory() ?: return results
 
-    // 1. Standalone APK files in Download / root
     val dlDir = File(ext, Environment.DIRECTORY_DOWNLOADS)
     if (dlDir.exists() && dlDir.canRead()) {
         dlDir.walkTopDown().maxDepth(2).forEach { f ->
@@ -683,7 +717,6 @@ private fun scanLeftoversAndApks(installedPkgs: Set<String>): List<LeftoverEntry
         }
     }
 
-    // 2. Orphaned Android/media or Android/obb folders from uninstalled apps
     val mediaDirs = listOf(File(ext, "Android/media"), File(ext, "Android/obb"))
     for (base in mediaDirs) {
         if (base.exists() && base.canRead()) {

@@ -22,11 +22,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -85,16 +88,27 @@ private data class TreemapBlock(
 )
 
 @Composable
-fun StorageCheckerScreen(telemetry: TelemetryEngine) {
+fun StorageCheckerScreen(
+    telemetry: TelemetryEngine,
+    requestedTab: Int = 0,
+    requestNonce: Int = 0
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val scroll = rememberScrollState()
 
     var scanning by remember { mutableStateOf(false) }
     var report by remember { mutableStateOf<StorageScanReport?>(null) }
     var statusBanner by remember { mutableStateOf<String?>(null) }
-    var activeTab by remember { mutableIntStateOf(0) } // 0: Folders, 1: Heavy, 2: Dups, 3: Optimizer
     var selectedTreemapLabel by remember { mutableStateOf<String?>(null) }
+
+    val pagerState = rememberPagerState(initialPage = requestedTab.coerceIn(0, 3), pageCount = { 4 })
+    LaunchedEffect(requestNonce, requestedTab) {
+        val target = requestedTab.coerceIn(0, 3)
+        if (pagerState.currentPage != target) {
+            pagerState.animateScrollToPage(target)
+        }
+    }
+    val activeTab = pagerState.currentPage
 
     // Super Optimizer selection flags: 0=AppCache, 1=TempLogs, 2=Thumbnails, 3=Duplicates
     val optSelected = remember { mutableStateListOf(true, true, true, false) }
@@ -134,10 +148,12 @@ fun StorageCheckerScreen(telemetry: TelemetryEngine) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scroll)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        LaunchedEffect(Unit) {
+            if (report == null) startScan()
+        }
         // 01 // PARTITION & C++ ENGINE
         DeckPanel(
             title = stringResource(R.string.stor_tag_overview),
@@ -218,7 +234,6 @@ fun StorageCheckerScreen(telemetry: TelemetryEngine) {
                 Text(text = stringResource(R.string.stor_empty_scan), style = DeckType.Body)
             }
         } else {
-            // 02 // SQUARIFIED TREEMAP & CATEGORY BREAKDOWN
             val catLabels = listOf(
                 stringResource(R.string.stor_cat_photo),
                 stringResource(R.string.stor_cat_video),
@@ -250,316 +265,272 @@ fun StorageCheckerScreen(telemetry: TelemetryEngine) {
                 }
             }
 
-            DeckPanel(
-                title = stringResource(R.string.stor_tag_treemap),
-                ledColor = BrutalistColors.TitaniumTrace,
-                headerAction = {
-                    Text(
-                        text = stringResource(
-                            R.string.stor_scan_stats,
-                            currentReport.files,
-                            currentReport.dirs,
-                            currentReport.elapsedMs
-                        ),
-                        style = DeckType.Caption,
-                        color = BrutalistColors.BoneInk
-                    )
-                }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
-                if (treemapBlocks.isNotEmpty()) {
-                    SquarifiedTreemapView(
-                        blocks = treemapBlocks,
-                        selectedLabel = selectedTreemapLabel,
-                        onSelect = { selectedTreemapLabel = it.label }
-                    )
-                    if (selectedTreemapLabel != null) {
-                        val hit = treemapBlocks.firstOrNull { it.label == selectedTreemapLabel }
-                        if (hit != null) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "[${hit.label}] ${formatBytesCompact(hit.bytes)} · ${hit.sub}",
-                                style = DeckType.Caption,
-                                color = BrutalistColors.SignalAccent
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                }
-
-                val maxCatBytes = currentReport.categories.maxOfOrNull { it.bytes }?.coerceAtLeast(1L) ?: 1L
-                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    for (cat in currentReport.categories) {
-                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "${catLabels.getOrElse(cat.index) { "OTHER" }} (${cat.count})",
-                                    style = DeckType.Caption,
-                                    color = BrutalistColors.BoneInk
-                                )
-                                Text(
-                                    text = formatBytesCompact(cat.bytes),
-                                    style = DeckType.DataMono,
-                                    color = if (cat.index == 5) BrutalistColors.SignalAccent else BrutalistColors.TitaniumTrace
-                                )
-                            }
-                            SegmentedBarMeter(
-                                fraction = cat.bytes.toFloat() / maxCatBytes.toFloat(),
-                                segments = 20,
-                                height = 6.dp,
-                                activeColor = if (cat.index == 5) BrutalistColors.SignalAccent else BrutalistColors.TitaniumTrace
-                            )
-                        }
-                    }
-                }
+                DeckChip(
+                    text = "${stringResource(R.string.stor_tab_folders)} (${currentReport.folders.size})",
+                    selected = activeTab == 0,
+                    onClick = { scope.launch { pagerState.animateScrollToPage(0) } }
+                )
+                DeckChip(
+                    text = stringResource(R.string.stor_tab_heavy),
+                    selected = activeTab == 1,
+                    onClick = { scope.launch { pagerState.animateScrollToPage(1) } }
+                )
+                DeckChip(
+                    text = "${stringResource(R.string.stor_tab_dups)} (${currentReport.duplicates.size})",
+                    selected = activeTab == 2,
+                    onClick = { scope.launch { pagerState.animateScrollToPage(2) } }
+                )
+                DeckChip(
+                    text = stringResource(R.string.stor_tab_optimizer),
+                    selected = activeTab == 3,
+                    onClick = { scope.launch { pagerState.animateScrollToPage(3) } }
+                )
             }
 
-            // 03 // FOLDERS, HEAVY FILES, DUPLICATES & SUPER OPTIMIZER
-            DeckPanel(
-                title = stringResource(R.string.stor_tag_details),
-                ledColor = BrutalistColors.SignalAccent
-            ) {
-                Row(
+            HorizontalPager(
+                state = pagerState,
+                beyondViewportPageCount = 0,
+                modifier = Modifier.weight(1f).fillMaxWidth()
+            ) { page ->
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    DeckChip(
-                        text = "${stringResource(R.string.stor_tab_folders)} (${currentReport.folders.size})",
-                        selected = activeTab == 0,
-                        onClick = { activeTab = 0 }
-                    )
-                    DeckChip(
-                        text = stringResource(R.string.stor_tab_heavy),
-                        selected = activeTab == 1,
-                        onClick = { activeTab = 1 }
-                    )
-                    DeckChip(
-                        text = "${stringResource(R.string.stor_tab_dups)} (${currentReport.duplicates.size})",
-                        selected = activeTab == 2,
-                        onClick = { activeTab = 2 }
-                    )
-                    DeckChip(
-                        text = stringResource(R.string.stor_tab_optimizer),
-                        selected = activeTab == 3,
-                        onClick = { activeTab = 3 }
-                    )
-                }
-                Spacer(modifier = Modifier.height(10.dp))
-
-                when (activeTab) {
-                    0 -> {
-                        if (currentReport.folders.isEmpty()) {
-                            Text(text = stringResource(R.string.stor_no_folders), style = DeckType.Body)
-                        } else {
-                            val maxDir = currentReport.folders.maxOfOrNull { it.bytes }?.coerceAtLeast(1L) ?: 1L
-                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                for (dir in currentReport.folders) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
-                                            .border(1.dp, BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
-                                            .padding(8.dp),
-                                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(
-                                                text = "/${dir.name} (${dir.files})",
-                                                style = DeckType.DataMono,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                                modifier = Modifier.weight(1f).padding(end = 8.dp)
-                                            )
-                                            Text(
-                                                text = formatBytesCompact(dir.bytes),
-                                                style = DeckType.DataMono,
-                                                color = BrutalistColors.SignalAccent
-                                            )
-                                        }
-                                        SegmentedBarMeter(
-                                            fraction = dir.bytes.toFloat() / maxDir.toFloat(),
-                                            segments = 18,
-                                            height = 5.dp
-                                        )
-                                    }
+                    when (page) {
+                        0 -> {
+                            DeckPanel(
+                                title = stringResource(R.string.stor_tag_treemap),
+                                ledColor = BrutalistColors.TitaniumTrace,
+                                headerAction = {
+                                    Text(
+                                        text = stringResource(
+                                            R.string.stor_scan_stats,
+                                            currentReport.files,
+                                            currentReport.dirs,
+                                            currentReport.elapsedMs
+                                        ),
+                                        style = DeckType.Caption,
+                                        color = BrutalistColors.BoneInk
+                                    )
                                 }
-                            }
-                        }
-                    }
-
-                    1 -> {
-                        if (currentReport.heavyFiles.isEmpty()) {
-                            Text(text = stringResource(R.string.stor_empty_scan), style = DeckType.Body)
-                        } else {
-                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                for (item in currentReport.heavyFiles) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
-                                            .border(1.dp, BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
-                                            .padding(8.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                            ) {
+                                if (treemapBlocks.isNotEmpty()) {
+                                    SquarifiedTreemapView(
+                                        blocks = treemapBlocks,
+                                        selectedLabel = selectedTreemapLabel,
+                                        onSelect = { selectedTreemapLabel = it.label }
+                                    )
+                                    if (selectedTreemapLabel != null) {
+                                        val hit = treemapBlocks.firstOrNull { it.label == selectedTreemapLabel }
+                                        if (hit != null) {
+                                            Spacer(modifier = Modifier.height(6.dp))
                                             Text(
-                                                text = item.name,
-                                                style = DeckType.DataMono,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                            Text(
-                                                text = item.path,
-                                                style = DeckType.Caption,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                        Text(
-                                            text = formatBytesCompact(item.size),
-                                            style = DeckType.DataMono,
-                                            color = BrutalistColors.SignalAccent
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    2 -> {
-                        if (currentReport.duplicates.isEmpty()) {
-                            Text(text = stringResource(R.string.stor_no_dups), style = DeckType.Body)
-                        } else {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                for (dup in currentReport.duplicates) {
-                                    val wasted = dup.fileSize * (dup.paths.size - 1).coerceAtLeast(0)
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
-                                            .border(1.dp, BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
-                                            .padding(8.dp),
-                                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(
-                                                text = stringResource(R.string.stor_dup_group, dup.paths.size, formatBytesCompact(wasted)),
+                                                text = "[${hit.label}] ${formatBytesCompact(hit.bytes)} · ${hit.sub}",
                                                 style = DeckType.Caption,
                                                 color = BrutalistColors.SignalAccent
                                             )
-                                            Text(
-                                                text = formatBytesCompact(dup.fileSize),
-                                                style = DeckType.Caption
-                                            )
-                                        }
-                                        for (p in dup.paths) {
-                                            Text(
-                                                text = p,
-                                                style = DeckType.Caption,
-                                                color = BrutalistColors.TungstenMute,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                        if (dup.paths.size > 1) {
-                                            DeckButton(
-                                                text = stringResource(R.string.stor_btn_clean),
-                                                onClick = { cleanPaths(dup.paths.drop(1)) },
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
                                         }
                                     }
+                                    Spacer(modifier = Modifier.height(10.dp))
                                 }
-                            }
-                        }
-                    }
 
-                    else -> {
-                        // SUPER OPTIMIZER CHECKLIST
-                        val dupCopyPaths = currentReport.duplicates.flatMap { it.paths.drop(1) }
-                        val optRows = listOf(
-                            Triple(0, stringResource(R.string.stor_opt_cache), currentReport.appCachePaths),
-                            Triple(1, stringResource(R.string.stor_opt_temp), currentReport.tempPaths),
-                            Triple(2, stringResource(R.string.stor_opt_thumbs), currentReport.thumbPaths),
-                            Triple(3, stringResource(R.string.stor_opt_dups), dupCopyPaths)
-                        )
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            for ((idx, title, paths) in optRows) {
-                                val checked = optSelected[idx]
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
-                                        .border(
-                                            1.dp,
-                                            if (checked) BrutalistColors.SignalAccent else BrutalistColors.HairlineBorder,
-                                            RoundedCornerShape(2.dp)
-                                        )
-                                        .clickable { optSelected[idx] = !checked }
-                                        .padding(9.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(16.dp)
-                                                .background(
-                                                    if (checked) BrutalistColors.SignalAccent else BrutalistColors.SteelElevated,
-                                                    RoundedCornerShape(2.dp)
-                                                )
-                                                .border(1.dp, BrutalistColors.ActiveBorder, RoundedCornerShape(2.dp)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            if (checked) {
+                                val maxCatBytes = currentReport.categories.maxOfOrNull { it.bytes }?.coerceAtLeast(1L) ?: 1L
+                                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                    for (cat in currentReport.categories) {
+                                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
                                                 Text(
-                                                    text = "X",
-                                                    fontFamily = FontFamily.Monospace,
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 10.sp,
-                                                    color = BrutalistColors.ObsidianBg
+                                                    text = "${catLabels.getOrElse(cat.index) { "OTHER" }} (${cat.count})",
+                                                    style = DeckType.Caption,
+                                                    color = BrutalistColors.BoneInk
+                                                )
+                                                Text(
+                                                    text = formatBytesCompact(cat.bytes),
+                                                    style = DeckType.DataMono,
+                                                    color = if (cat.index == 5) BrutalistColors.SignalAccent else BrutalistColors.TitaniumTrace
+                                                )
+                                            }
+                                            SegmentedBarMeter(
+                                                fraction = cat.bytes.toFloat() / maxCatBytes.toFloat(),
+                                                segments = 20,
+                                                height = 6.dp,
+                                                activeColor = if (cat.index == 5) BrutalistColors.SignalAccent else BrutalistColors.TitaniumTrace
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            DeckPanel(
+                                title = stringResource(R.string.stor_tab_folders),
+                                ledColor = BrutalistColors.SignalAccent
+                            ) {
+                                if (currentReport.folders.isEmpty()) {
+                                    Text(text = stringResource(R.string.stor_no_folders), style = DeckType.Body)
+                                } else {
+                                    val maxDir = currentReport.folders.maxOfOrNull { it.bytes }?.coerceAtLeast(1L) ?: 1L
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        for (dir in currentReport.folders) {
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
+                                                    .border(1.dp, BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
+                                                    .padding(8.dp),
+                                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                                ) {
+                                                    Text(
+                                                        text = "/${dir.name} (${dir.files})",
+                                                        style = DeckType.DataMono,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        modifier = Modifier.weight(1f).padding(end = 8.dp)
+                                                    )
+                                                    Text(
+                                                        text = formatBytesCompact(dir.bytes),
+                                                        style = DeckType.DataMono,
+                                                        color = BrutalistColors.SignalAccent
+                                                    )
+                                                }
+                                                SegmentedBarMeter(
+                                                    fraction = dir.bytes.toFloat() / maxDir.toFloat(),
+                                                    segments = 18,
+                                                    height = 5.dp
                                                 )
                                             }
                                         }
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(text = title, style = DeckType.DataMono)
                                     }
-                                    Text(
-                                        text = "${paths.size} items",
-                                        style = DeckType.Caption,
-                                        color = BrutalistColors.SignalAccent
-                                    )
                                 }
                             }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            val queued = optRows.filter { optSelected[it.first] }.flatMap { it.third }.distinct()
-                            DeckButton(
-                                text = "${stringResource(R.string.stor_btn_clean_sel)} (${queued.size})",
-                                onClick = { cleanPaths(queued) },
-                                primary = true,
-                                enabled = queued.isNotEmpty(),
-                                modifier = Modifier.fillMaxWidth()
+                        }
+
+                        1 -> DeckPanel(title = stringResource(R.string.stor_tab_heavy), ledColor = BrutalistColors.SignalAccent) {
+                            if (currentReport.heavyFiles.isEmpty()) {
+                                Text(text = stringResource(R.string.stor_empty_scan), style = DeckType.Body)
+                            } else {
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    for (item in currentReport.heavyFiles) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
+                                                .border(1.dp, BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
+                                                .padding(8.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                                Text(item.name, style = DeckType.DataMono, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                                Text(item.path, style = DeckType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            }
+                                            Text(formatBytesCompact(item.size), style = DeckType.DataMono, color = BrutalistColors.SignalAccent)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        2 -> DeckPanel(title = stringResource(R.string.stor_tab_dups), ledColor = BrutalistColors.SignalAccent) {
+                            if (currentReport.duplicates.isEmpty()) {
+                                Text(text = stringResource(R.string.stor_no_dups), style = DeckType.Body)
+                            } else {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    for (dup in currentReport.duplicates) {
+                                        val wasted = dup.fileSize * (dup.paths.size - 1).coerceAtLeast(0)
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
+                                                .border(1.dp, BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
+                                                .padding(8.dp),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                Text(stringResource(R.string.stor_dup_group, dup.paths.size, formatBytesCompact(wasted)), style = DeckType.Caption, color = BrutalistColors.SignalAccent)
+                                                Text(formatBytesCompact(dup.fileSize), style = DeckType.Caption)
+                                            }
+                                            for (p in dup.paths) {
+                                                Text(p, style = DeckType.Caption, color = BrutalistColors.TungstenMute, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            }
+                                            if (dup.paths.size > 1) {
+                                                DeckButton(stringResource(R.string.stor_btn_clean), onClick = { cleanPaths(dup.paths.drop(1)) }, modifier = Modifier.fillMaxWidth())
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        else -> DeckPanel(title = stringResource(R.string.stor_tab_optimizer), ledColor = BrutalistColors.StatusNominal) {
+                            val dupCopyPaths = currentReport.duplicates.flatMap { it.paths.drop(1) }
+                            val optRows = listOf(
+                                Triple(0, stringResource(R.string.stor_opt_cache), currentReport.appCachePaths),
+                                Triple(1, stringResource(R.string.stor_opt_temp), currentReport.tempPaths),
+                                Triple(2, stringResource(R.string.stor_opt_thumbs), currentReport.thumbPaths),
+                                Triple(3, stringResource(R.string.stor_opt_dups), dupCopyPaths)
                             )
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                for ((idx, title, paths) in optRows) {
+                                    val checked = optSelected[idx]
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
+                                            .border(1.dp, if (checked) BrutalistColors.SignalAccent else BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
+                                            .clickable { optSelected[idx] = !checked }
+                                            .padding(9.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(16.dp)
+                                                    .background(if (checked) BrutalistColors.SignalAccent else BrutalistColors.SteelElevated, RoundedCornerShape(2.dp))
+                                                    .border(1.dp, BrutalistColors.ActiveBorder, RoundedCornerShape(2.dp)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                if (checked) {
+                                                    Text("X", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 10.sp, color = BrutalistColors.ObsidianBg)
+                                                }
+                                            }
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(text = title, style = DeckType.DataMono)
+                                        }
+                                        Text(text = "${paths.size} items", style = DeckType.Caption, color = BrutalistColors.SignalAccent)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                val queued = optRows.filter { optSelected[it.first] }.flatMap { it.third }.distinct()
+                                DeckButton(
+                                    text = "${stringResource(R.string.stor_btn_clean_sel)} (${queued.size})",
+                                    onClick = { cleanPaths(queued) },
+                                    primary = true,
+                                    enabled = queued.isNotEmpty(),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                     }
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
             }
         }
-        Spacer(modifier = Modifier.height(6.dp))
     }
 }
 

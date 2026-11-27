@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -84,10 +86,10 @@ fun BenchmarkScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val scroll = rememberScrollState()
     val ultraLite = perfController.isUltraLite
 
-    var activeTab by remember { mutableIntStateOf(0) } // 0=Full Suite, 1=Stress Test, 2=History
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { 3 })
+    val activeTab = pagerState.currentPage
     var runningSuite by remember { mutableStateOf(false) }
     var runningThrottle by remember { mutableStateOf(false) }
     var stressDurationSec by remember { mutableIntStateOf(30) }
@@ -135,18 +137,23 @@ fun BenchmarkScreen(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
-            DeckChip(stringResource(R.string.bench_tab_suite), activeTab == 0, { activeTab = 0 })
-            DeckChip(stringResource(R.string.bench_tab_stress), activeTab == 1, { activeTab = 1 })
-            DeckChip("${stringResource(R.string.bench_tab_history)} (${historyLog.size})", activeTab == 2, { activeTab = 2 })
+            DeckChip(stringResource(R.string.bench_tab_suite), activeTab == 0, { scope.launch { pagerState.animateScrollToPage(0) } })
+            DeckChip(stringResource(R.string.bench_tab_stress), activeTab == 1, { scope.launch { pagerState.animateScrollToPage(1) } })
+            DeckChip("${stringResource(R.string.bench_tab_history)} (${historyLog.size})", activeTab == 2, { scope.launch { pagerState.animateScrollToPage(2) } })
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scroll),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            when (activeTab) {
+        HorizontalPager(
+            state = pagerState,
+            beyondViewportPageCount = 0,
+            modifier = Modifier.weight(1f).fillMaxWidth()
+        ) { page ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                when (page) {
                 0 -> {
                     DeckPanel(
                         title = stringResource(R.string.bench_tag_cpu),
@@ -421,6 +428,7 @@ fun BenchmarkScreen(
                 }
             }
             Spacer(modifier = Modifier.height(6.dp))
+            }
         }
     }
 }

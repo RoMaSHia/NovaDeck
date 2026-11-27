@@ -1,8 +1,8 @@
 {
-  "versionCode": 2,
-  "versionName": "1.1.0",
+  "versionCode": 3,
+  "versionName": "1.2.0",
   "apkUrl": "https://github.com/RoMaSHia/NovaDeck/releases/latest/download/NovaDeck-release.apk",
   "releaseUrl": "https://github.com/RoMaSHia/NovaDeck/releases/latest/download/NovaDeck-release.apk",
   "rawApkUrl": "https://github.com/RoMaSHia/NovaDeck/raw/main/dist/NovaDeck-release.apk",
-  "changelog": "v1.1.0: Full StellarHub feature parity (Squarified Storage Treemap, Open Ports & SELinux Audit, Native SHA-256/LZ/RAM BW Benchmark, TCP Ping, Camera2/Keys Tester, Compact OTA Modal & GitHub Releases)"
+  "changelog": "v1.2.0: Left/right swipe navigation (HorizontalPager), Smart Device Optimizer, Autorun & Bloatware Analyzer, and Telemetry/Data-Sharing Audit"
 }

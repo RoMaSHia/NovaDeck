@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -67,15 +69,22 @@ import kotlin.math.abs
 fun LiveMonitorScreen(
     telemetry: TelemetryEngine,
     perfController: PerformanceTierController,
-    initialTab: Int = 0
+    requestedTab: Int = 0,
+    requestNonce: Int = 0
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val tick = telemetry.tickVersion.longValue
-    val scroll = rememberScrollState()
     val ultraLite = perfController.isUltraLite
 
-    var activeTab by remember(initialTab) { mutableIntStateOf(initialTab.coerceIn(0, 4)) }
+    val pagerState = rememberPagerState(initialPage = requestedTab.coerceIn(0, 4), pageCount = { 5 })
+    LaunchedEffect(requestNonce, requestedTab) {
+        val target = requestedTab.coerceIn(0, 4)
+        if (pagerState.currentPage != target) {
+            pagerState.animateScrollToPage(target)
+        }
+    }
+    val activeTab = pagerState.currentPage
 
     // Tab 1: Live Choreographer FPS meter
     val fpsRing = remember { FloatRingBuffer(60) }
@@ -147,11 +156,11 @@ fun LiveMonitorScreen(
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                DeckChip(stringResource(R.string.mon_tab_cpu), activeTab == 0, { activeTab = 0 })
-                DeckChip(stringResource(R.string.mon_tab_gpu), activeTab == 1, { activeTab = 1 })
-                DeckChip(stringResource(R.string.mon_tab_ram), activeTab == 2, { activeTab = 2 })
-                DeckChip(stringResource(R.string.mon_tab_net), activeTab == 3, { activeTab = 3 })
-                DeckChip(stringResource(R.string.mon_tab_batt), activeTab == 4, { activeTab = 4 })
+                DeckChip(stringResource(R.string.mon_tab_cpu), activeTab == 0, { scope.launch { pagerState.animateScrollToPage(0) } })
+                DeckChip(stringResource(R.string.mon_tab_gpu), activeTab == 1, { scope.launch { pagerState.animateScrollToPage(1) } })
+                DeckChip(stringResource(R.string.mon_tab_ram), activeTab == 2, { scope.launch { pagerState.animateScrollToPage(2) } })
+                DeckChip(stringResource(R.string.mon_tab_net), activeTab == 3, { scope.launch { pagerState.animateScrollToPage(3) } })
+                DeckChip(stringResource(R.string.mon_tab_batt), activeTab == 4, { scope.launch { pagerState.animateScrollToPage(4) } })
             }
             DeckChip(
                 text = if (telemetry.isPaused) stringResource(R.string.mon_paused) else stringResource(R.string.mon_live),
@@ -161,13 +170,18 @@ fun LiveMonitorScreen(
             )
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scroll),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            when (activeTab) {
+        HorizontalPager(
+            state = pagerState,
+            beyondViewportPageCount = 0,
+            modifier = Modifier.weight(1f).fillMaxWidth()
+        ) { page ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                when (page) {
                 0 -> {
                     // CPU CORES & LOADAVG
                     DeckPanel(
@@ -556,6 +570,7 @@ fun LiveMonitorScreen(
                 }
             }
             Spacer(modifier = Modifier.height(6.dp))
+            }
         }
     }
 }

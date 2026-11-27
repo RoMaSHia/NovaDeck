@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -28,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +59,7 @@ import io.novadeck.control.ui.screens.StorageCheckerScreen
 import io.novadeck.control.ui.theme.BrutalistColors
 import io.novadeck.control.ui.theme.DeckType
 import io.novadeck.control.ui.theme.NovaDeckTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -91,10 +95,36 @@ private fun NovaDeckShell(
     telemetry: TelemetryEngine,
     perfController: PerformanceTierController
 ) {
-    var activeRoute by remember { mutableStateOf(DeckRoute.HOME) }
-    var monitorInitialTab by remember { mutableIntStateOf(0) }
+    val routes = remember { DeckRoute.entries }
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { routes.size })
+    val scope = rememberCoroutineScope()
+
+    var monitorTabReq by remember { mutableIntStateOf(0) }
+    var monitorNonce by remember { mutableIntStateOf(0) }
+    var storageTabReq by remember { mutableIntStateOf(0) }
+    var storageNonce by remember { mutableIntStateOf(0) }
+    var appsTabReq by remember { mutableIntStateOf(0) }
+    var appsNonce by remember { mutableIntStateOf(0) }
+    var privacyTabReq by remember { mutableIntStateOf(0) }
+    var privacyNonce by remember { mutableIntStateOf(0) }
+
+    var isSwipeLocked by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showUpdater by remember { mutableStateOf(false) }
+
+    fun navigateTo(route: DeckRoute, subTab: Int? = null) {
+        if (subTab != null) {
+            when (route) {
+                DeckRoute.MONITOR -> { monitorTabReq = subTab; monitorNonce++ }
+                DeckRoute.STORAGE -> { storageTabReq = subTab; storageNonce++ }
+                DeckRoute.APPS -> { appsTabReq = subTab; appsNonce++ }
+                DeckRoute.PRIVACY -> { privacyTabReq = subTab; privacyNonce++ }
+                else -> Unit
+            }
+        }
+        val idx = routes.indexOf(route).coerceAtLeast(0)
+        scope.launch { pagerState.animateScrollToPage(idx) }
+    }
 
     Box(
         modifier = Modifier
@@ -122,26 +152,43 @@ private fun NovaDeckShell(
                     .background(BrutalistColors.HairlineBorder)
             )
 
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                when (activeRoute) {
+            HorizontalPager(
+                state = pagerState,
+                beyondViewportPageCount = 0,
+                userScrollEnabled = !isSwipeLocked && !showSettings && !showUpdater,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) { page ->
+                when (routes[page]) {
                     DeckRoute.HOME -> HomeScreen(
                         telemetry = telemetry,
                         perfController = perfController,
-                        onNavigate = { route -> activeRoute = route },
-                        onOpenMonitorTab = { tab ->
-                            monitorInitialTab = tab
-                            activeRoute = DeckRoute.MONITOR
-                        }
+                        onNavigate = { route, subTab -> navigateTo(route, subTab) }
                     )
                     DeckRoute.MONITOR -> LiveMonitorScreen(
                         telemetry = telemetry,
                         perfController = perfController,
-                        initialTab = monitorInitialTab
+                        requestedTab = monitorTabReq,
+                        requestNonce = monitorNonce
                     )
-                    DeckRoute.STORAGE -> StorageCheckerScreen(telemetry = telemetry)
-                    DeckRoute.APPS -> AppManagerScreen()
-                    DeckRoute.HARDWARE -> HardwareTesterScreen(perfController = perfController)
-                    DeckRoute.PRIVACY -> PrivacyAuditScreen()
+                    DeckRoute.STORAGE -> StorageCheckerScreen(
+                        telemetry = telemetry,
+                        requestedTab = storageTabReq,
+                        requestNonce = storageNonce
+                    )
+                    DeckRoute.APPS -> AppManagerScreen(
+                        requestedTab = appsTabReq,
+                        requestNonce = appsNonce
+                    )
+                    DeckRoute.HARDWARE -> HardwareTesterScreen(
+                        perfController = perfController,
+                        onSwipeLockChange = { locked -> isSwipeLocked = locked }
+                    )
+                    DeckRoute.PRIVACY -> PrivacyAuditScreen(
+                        requestedTab = privacyTabReq,
+                        requestNonce = privacyNonce
+                    )
                     DeckRoute.BENCHMARK -> BenchmarkScreen(
                         telemetry = telemetry,
                         perfController = perfController
@@ -157,8 +204,8 @@ private fun NovaDeckShell(
             )
 
             BottomDeckNav(
-                activeRoute = activeRoute,
-                onSelect = { activeRoute = it }
+                activeRoute = routes[pagerState.currentPage],
+                onSelect = { navigateTo(it) }
             )
         }
 
@@ -225,7 +272,6 @@ private fun TopDeckBar(
             horizontalArrangement = Arrangement.spacedBy(5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Compact version + OTA modal trigger
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(2.dp))

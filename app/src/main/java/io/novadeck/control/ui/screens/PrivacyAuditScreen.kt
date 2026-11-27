@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -47,7 +49,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.novadeck.control.R
+import io.novadeck.control.core.DeviceOptimizerEngine
 import io.novadeck.control.core.NativeBridge
+import io.novadeck.control.core.TelemetryCheckReport
 import io.novadeck.control.ui.components.DeckButton
 import io.novadeck.control.ui.components.DeckChip
 import io.novadeck.control.ui.components.DeckPanel
@@ -62,7 +66,7 @@ import java.security.KeyStore
 private data class SecurityPosture(
     val encrypted: Boolean,
     val rootFlags: Int,
-    val selinuxEnforce: Int, // 1=Enforcing, 0=Permissive, -1=Restricted
+    val selinuxEnforce: Int,
     val adbEnabled: Boolean,
     val wirelessAdbEnabled: Boolean,
     val devEnabled: Boolean,
@@ -97,17 +101,30 @@ private data class SensitivePermReport(
 )
 
 @Composable
-fun PrivacyAuditScreen() {
+fun PrivacyAuditScreen(
+    requestedTab: Int = 0,
+    requestNonce: Int = 0
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val scroll = rememberScrollState()
 
-    var activeTab by remember { mutableIntStateOf(0) } // 0=Integrity, 1=Sockets, 2=Permissions
+    // 0=Integrity, 1=Open Ports, 2=Telemetry & Data Sharing, 3=Permissions
+    val pagerState = rememberPagerState(initialPage = requestedTab.coerceIn(0, 3), pageCount = { 4 })
+    LaunchedEffect(requestNonce, requestedTab) {
+        val target = requestedTab.coerceIn(0, 3)
+        if (pagerState.currentPage != target) {
+            pagerState.animateScrollToPage(target)
+        }
+    }
+    val activeTab = pagerState.currentPage
+
     var posture by remember { mutableStateOf<SecurityPosture?>(null) }
+    var telemetryReport by remember { mutableStateOf<TelemetryCheckReport?>(null) }
     var permReport by remember { mutableStateOf<SensitivePermReport?>(null) }
     var socketsRestricted by remember { mutableStateOf(false) }
     var sockets by remember { mutableStateOf<List<SocketEntry>>(emptyList()) }
     var selectedCategory by remember { mutableIntStateOf(0) }
+    var refreshTick by remember { mutableIntStateOf(0) }
 
     fun reloadSockets() {
         scope.launch {
@@ -128,12 +145,17 @@ fun PrivacyAuditScreen() {
         }
     }
 
-    LaunchedEffect(Unit) {
-        val result = withContext(Dispatchers.IO) {
-            Pair(auditPosture(context), auditSensitivePermissions(context))
+    LaunchedEffect(refreshTick) {
+        val (p, tr, pr) = withContext(Dispatchers.IO) {
+            Triple(
+                auditPosture(context),
+                DeviceOptimizerEngine.auditTelemetryAndDataSharing(context),
+                auditSensitivePermissions(context)
+            )
         }
-        posture = result.first
-        permReport = result.second
+        posture = p
+        telemetryReport = tr
+        permReport = pr
         reloadSockets()
     }
 
@@ -149,201 +171,269 @@ fun PrivacyAuditScreen() {
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
-            DeckChip(stringResource(R.string.priv_tab_integrity), activeTab == 0, { activeTab = 0 })
-            DeckChip(stringResource(R.string.priv_tab_ports), activeTab == 1, { activeTab = 1 })
-            DeckChip(stringResource(R.string.priv_tab_perms), activeTab == 2, { activeTab = 2 })
+            DeckChip(stringResource(R.string.priv_tab_integrity), activeTab == 0, { scope.launch { pagerState.animateScrollToPage(0) } })
+            DeckChip(stringResource(R.string.priv_tab_ports), activeTab == 1, { scope.launch { pagerState.animateScrollToPage(1) } })
+            DeckChip(stringResource(R.string.priv_tab_telemetry), activeTab == 2, { scope.launch { pagerState.animateScrollToPage(2) } })
+            DeckChip(stringResource(R.string.priv_tab_perms), activeTab == 3, { scope.launch { pagerState.animateScrollToPage(3) } })
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scroll),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            when (activeTab) {
-                0 -> {
-                    val p = posture
-                    if (p != null) {
-                        val scoreColor = when {
-                            p.score >= 85 -> BrutalistColors.StatusNominal
-                            p.score >= 60 -> BrutalistColors.StatusCaution
-                            else -> BrutalistColors.StatusFault
-                        }
-                        DeckPanel(
-                            title = stringResource(R.string.priv_tag_posture),
-                            ledColor = scoreColor,
-                            headerAction = {
-                                Box(
-                                    modifier = Modifier
-                                        .background(scoreColor.copy(alpha = 0.16f), RoundedCornerShape(2.dp))
-                                        .border(1.dp, scoreColor, RoundedCornerShape(2.dp))
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = "${stringResource(R.string.priv_score_label)}: ${p.score}%",
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp,
-                                        color = scoreColor
-                                    )
-                                }
+        HorizontalPager(
+            state = pagerState,
+            beyondViewportPageCount = 0,
+            modifier = Modifier.weight(1f).fillMaxWidth()
+        ) { page ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                when (page) {
+                    0 -> {
+                        val p = posture
+                        if (p != null) {
+                            val scoreColor = when {
+                                p.score >= 85 -> BrutalistColors.StatusNominal
+                                p.score >= 60 -> BrutalistColors.StatusCaution
+                                else -> BrutalistColors.StatusFault
                             }
-                        ) {
-                            KeyValueRow(
-                                stringResource(R.string.priv_check_enc),
-                                if (p.encrypted) stringResource(R.string.priv_val_encrypted) else stringResource(R.string.priv_val_unencrypted),
-                                if (p.encrypted) BrutalistColors.StatusNominal else BrutalistColors.StatusFault
-                            )
-                            KeyValueRow(
-                                stringResource(R.string.priv_check_root),
-                                if (p.rootFlags == 0) stringResource(R.string.priv_val_clean) else "${stringResource(R.string.priv_val_detected)} (0x${p.rootFlags.toString(16)})",
-                                if (p.rootFlags == 0) BrutalistColors.StatusNominal else BrutalistColors.StatusFault
-                            )
-                            KeyValueRow(
-                                "SELINUX",
-                                when (p.selinuxEnforce) {
-                                    1 -> "ENFORCING"
-                                    0 -> "PERMISSIVE"
-                                    else -> "PROTECTED"
-                                },
-                                when (p.selinuxEnforce) {
-                                    0 -> BrutalistColors.StatusFault
-                                    else -> BrutalistColors.StatusNominal
-                                }
-                            )
-                            KeyValueRow(
-                                stringResource(R.string.priv_check_adb),
-                                if (p.adbEnabled) stringResource(R.string.priv_val_enabled) else stringResource(R.string.priv_val_disabled),
-                                if (p.adbEnabled) BrutalistColors.StatusCaution else BrutalistColors.StatusNominal
-                            )
-                            KeyValueRow(
-                                "WIRELESS ADB",
-                                if (p.wirelessAdbEnabled) stringResource(R.string.priv_val_enabled) else stringResource(R.string.priv_val_disabled),
-                                if (p.wirelessAdbEnabled) BrutalistColors.StatusCaution else BrutalistColors.StatusNominal
-                            )
-                            KeyValueRow(
-                                stringResource(R.string.priv_check_dev),
-                                if (p.devEnabled) stringResource(R.string.priv_val_enabled) else stringResource(R.string.priv_val_disabled),
-                                if (p.devEnabled) BrutalistColors.StatusCaution else BrutalistColors.StatusNominal
-                            )
-                            KeyValueRow(
-                                stringResource(R.string.priv_check_lock),
-                                if (p.lockSecure) stringResource(R.string.priv_val_enabled) else stringResource(R.string.priv_val_disabled),
-                                if (p.lockSecure) BrutalistColors.StatusNominal else BrutalistColors.StatusFault
-                            )
-                            KeyValueRow("VPN TUNNEL", if (p.vpnActive) "ACTIVE" else "NONE")
-                            KeyValueRow("HTTP PROXY", p.proxyConfigured)
-                            KeyValueRow(
-                                "USER CA CERTS",
-                                "${p.userCaCount}",
-                                if (p.userCaCount > 0) BrutalistColors.StatusCaution else BrutalistColors.StatusNominal
-                            )
-                            KeyValueRow(stringResource(R.string.priv_check_patch), p.securityPatch)
-                        }
-                    }
-                }
-
-                1 -> {
-                    DeckPanel(
-                        title = stringResource(R.string.priv_tag_ports),
-                        ledColor = if (socketsRestricted) BrutalistColors.StatusCaution else BrutalistColors.StatusNominal,
-                        headerAction = {
-                            DeckChip(text = "↻", selected = false, onClick = { reloadSockets() })
-                        }
-                    ) {
-                        if (socketsRestricted) {
-                            Text(text = stringResource(R.string.priv_ports_restricted), style = DeckType.Body)
-                        } else if (sockets.isEmpty()) {
-                            Text(text = "0 active sockets listed.", style = DeckType.Body)
-                        } else {
-                            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                for (s in sockets) {
-                                    Row(
+                            DeckPanel(
+                                title = stringResource(R.string.priv_tag_posture),
+                                ledColor = scoreColor,
+                                headerAction = {
+                                    Box(
                                         modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
-                                            .border(1.dp, BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
-                                            .padding(7.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                                            .background(scoreColor.copy(alpha = 0.16f), RoundedCornerShape(2.dp))
+                                            .border(1.dp, scoreColor, RoundedCornerShape(2.dp))
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
                                     ) {
-                                        Column(modifier = Modifier.weight(1f).padding(end = 6.dp)) {
-                                            Text("${s.proto} · ${s.local} -> ${s.remote}", style = DeckType.Caption, color = BrutalistColors.BoneInk, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                            Text("UID: ${s.uid}", style = DeckType.Caption, color = BrutalistColors.TungstenMute)
-                                        }
                                         Text(
-                                            text = s.state,
-                                            style = DeckType.Caption,
-                                            color = if (s.state == "LISTEN") BrutalistColors.SignalAccent else BrutalistColors.StatusNominal
+                                            text = "${stringResource(R.string.priv_score_label)}: ${p.score}%",
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 10.sp,
+                                            color = scoreColor
                                         )
                                     }
                                 }
+                            ) {
+                                KeyValueRow(stringResource(R.string.priv_check_enc), if (p.encrypted) stringResource(R.string.priv_val_encrypted) else stringResource(R.string.priv_val_unencrypted), if (p.encrypted) BrutalistColors.StatusNominal else BrutalistColors.StatusFault)
+                                KeyValueRow(stringResource(R.string.priv_check_root), if (p.rootFlags == 0) stringResource(R.string.priv_val_clean) else "${stringResource(R.string.priv_val_detected)} (0x${p.rootFlags.toString(16)})", if (p.rootFlags == 0) BrutalistColors.StatusNominal else BrutalistColors.StatusFault)
+                                KeyValueRow("SELINUX", when (p.selinuxEnforce) { 1 -> "ENFORCING"; 0 -> "PERMISSIVE"; else -> "PROTECTED" }, if (p.selinuxEnforce == 0) BrutalistColors.StatusFault else BrutalistColors.StatusNominal)
+                                KeyValueRow(stringResource(R.string.priv_check_adb), if (p.adbEnabled) stringResource(R.string.priv_val_enabled) else stringResource(R.string.priv_val_disabled), if (p.adbEnabled) BrutalistColors.StatusCaution else BrutalistColors.StatusNominal)
+                                KeyValueRow("WIRELESS ADB", if (p.wirelessAdbEnabled) stringResource(R.string.priv_val_enabled) else stringResource(R.string.priv_val_disabled), if (p.wirelessAdbEnabled) BrutalistColors.StatusCaution else BrutalistColors.StatusNominal)
+                                KeyValueRow(stringResource(R.string.priv_check_dev), if (p.devEnabled) stringResource(R.string.priv_val_enabled) else stringResource(R.string.priv_val_disabled), if (p.devEnabled) BrutalistColors.StatusCaution else BrutalistColors.StatusNominal)
+                                KeyValueRow(stringResource(R.string.priv_check_lock), if (p.lockSecure) stringResource(R.string.priv_val_enabled) else stringResource(R.string.priv_val_disabled), if (p.lockSecure) BrutalistColors.StatusNominal else BrutalistColors.StatusFault)
+                                KeyValueRow("VPN TUNNEL", if (p.vpnActive) "ACTIVE" else "NONE")
+                                KeyValueRow("HTTP PROXY", p.proxyConfigured)
+                                KeyValueRow("USER CA CERTS", "${p.userCaCount}", if (p.userCaCount > 0) BrutalistColors.StatusCaution else BrutalistColors.StatusNominal)
+                                KeyValueRow(stringResource(R.string.priv_check_patch), p.securityPatch)
                             }
                         }
                     }
-                }
 
-                else -> {
-                    val rep = permReport
-                    DeckPanel(
-                        title = stringResource(R.string.priv_tag_perms),
-                        ledColor = BrutalistColors.SignalAccent
-                    ) {
-                        if (rep == null) {
-                            Text(text = stringResource(R.string.apps_loading), style = DeckType.Body)
-                        } else {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                DeckChip("${stringResource(R.string.priv_perm_camera)} (${rep.cameraApps.size})", selectedCategory == 0, { selectedCategory = 0 }, modifier = Modifier.weight(1f))
-                                DeckChip("${stringResource(R.string.priv_perm_mic)} (${rep.micApps.size})", selectedCategory == 1, { selectedCategory = 1 }, modifier = Modifier.weight(1f))
-                            }
-                            Spacer(modifier = Modifier.height(5.dp))
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                DeckChip("${stringResource(R.string.priv_perm_loc)} (${rep.locationApps.size})", selectedCategory == 2, { selectedCategory = 2 }, modifier = Modifier.weight(1f))
-                                DeckChip("${stringResource(R.string.priv_perm_sms)} (${rep.smsApps.size})", selectedCategory == 3, { selectedCategory = 3 }, modifier = Modifier.weight(1f))
-                            }
-                            Spacer(modifier = Modifier.height(5.dp))
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                DeckChip("${stringResource(R.string.priv_perm_overlay)} (${rep.overlayApps.size})", selectedCategory == 4, { selectedCategory = 4 }, modifier = Modifier.weight(1f))
-                                DeckChip("${stringResource(R.string.priv_perm_install)} (${rep.installApps.size})", selectedCategory == 5, { selectedCategory = 5 }, modifier = Modifier.weight(1f))
-                            }
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            val list = when (selectedCategory) {
-                                0 -> rep.cameraApps
-                                1 -> rep.micApps
-                                2 -> rep.locationApps
-                                3 -> rep.smsApps
-                                4 -> rep.overlayApps
-                                else -> rep.installApps
-                            }
-                            if (list.isEmpty()) {
-                                Text(text = stringResource(R.string.priv_no_apps), style = DeckType.Body)
+                    1 -> {
+                        DeckPanel(
+                            title = stringResource(R.string.priv_tag_ports),
+                            ledColor = if (socketsRestricted) BrutalistColors.StatusCaution else BrutalistColors.StatusNominal,
+                            headerAction = { DeckChip(text = "↻", selected = false, onClick = { reloadSockets() }) }
+                        ) {
+                            if (socketsRestricted) {
+                                Text(text = stringResource(R.string.priv_ports_restricted), style = DeckType.Body)
+                            } else if (sockets.isEmpty()) {
+                                Text(text = "0 active sockets listed.", style = DeckType.Body)
                             } else {
-                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    for (app in list) {
+                                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                    for (s in sockets) {
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
                                                 .border(1.dp, BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
-                                                .padding(8.dp),
+                                                .padding(7.dp),
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                                                Text(app.label, style = DeckType.Label, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                                Text(app.packageName, style = DeckType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Column(modifier = Modifier.weight(1f).padding(end = 6.dp)) {
+                                                Text("${s.proto} · ${s.local} -> ${s.remote}", style = DeckType.Caption, color = BrutalistColors.BoneInk, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                                Text("UID: ${s.uid}", style = DeckType.Caption, color = BrutalistColors.TungstenMute)
                                             }
-                                            DeckButton(
-                                                text = stringResource(R.string.priv_btn_revoke),
-                                                onClick = {
-                                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                                        data = Uri.parse("package:${app.packageName}")
-                                                    }
-                                                    context.startActivity(intent)
+                                            Text(s.state, style = DeckType.Caption, color = if (s.state == "LISTEN") BrutalistColors.SignalAccent else BrutalistColors.StatusNominal)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    2 -> {
+                        // TELEMETRY & DATA-SHARING CHECKBOXES AUDIT
+                        val tr = telemetryReport
+                        DeckPanel(
+                            title = stringResource(R.string.priv_tag_telemetry),
+                            ledColor = BrutalistColors.SignalAccent,
+                            headerAction = { DeckChip(text = "↻", selected = false, onClick = { refreshTick++ }) }
+                        ) {
+                            if (tr == null) {
+                                Text(text = stringResource(R.string.apps_loading), style = DeckType.Body)
+                            } else {
+                                Text(text = stringResource(R.string.priv_tel_intro), style = DeckType.Caption, color = BrutalistColors.TungstenMute)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                    TelemetryCheckRow(
+                                        title = stringResource(R.string.priv_tel_wifi_scan),
+                                        desc = stringResource(R.string.priv_tel_wifi_scan_desc),
+                                        active = tr.wifiScanAlwaysOn,
+                                        actionLabel = stringResource(R.string.priv_btn_uncheck),
+                                        onClick = { DeviceOptimizerEngine.openLocationScanningSettings(context) }
+                                    )
+                                    TelemetryCheckRow(
+                                        title = stringResource(R.string.priv_tel_ble_scan),
+                                        desc = stringResource(R.string.priv_tel_ble_scan_desc),
+                                        active = tr.bleScanAlwaysOn,
+                                        actionLabel = stringResource(R.string.priv_btn_uncheck),
+                                        onClick = { DeviceOptimizerEngine.openLocationScanningSettings(context) }
+                                    )
+                                    TelemetryCheckRow(
+                                        title = stringResource(R.string.priv_tel_diag),
+                                        desc = stringResource(R.string.priv_tel_diag_desc),
+                                        active = tr.diagnosticsUploadOn,
+                                        actionLabel = stringResource(R.string.priv_btn_uncheck),
+                                        onClick = { DeviceOptimizerEngine.openPrivacyDiagnosticsSettings(context) }
+                                    )
+                                    TelemetryCheckRow(
+                                        title = "${stringResource(R.string.priv_tel_notif)} (${tr.notificationReaders.size})",
+                                        desc = if (tr.notificationReaders.isEmpty()) stringResource(R.string.priv_val_clean) else tr.notificationReaders.joinToString(", "),
+                                        active = tr.notificationReaders.isNotEmpty(),
+                                        actionLabel = stringResource(R.string.priv_btn_revoke),
+                                        onClick = { DeviceOptimizerEngine.openNotificationListenersSettings(context) }
+                                    )
+                                    TelemetryCheckRow(
+                                        title = "${stringResource(R.string.priv_tel_a11y)} (${tr.accessibilityReaders.size})",
+                                        desc = if (tr.accessibilityReaders.isEmpty()) stringResource(R.string.priv_val_clean) else tr.accessibilityReaders.joinToString(", "),
+                                        active = tr.accessibilityReaders.isNotEmpty(),
+                                        actionLabel = stringResource(R.string.priv_btn_revoke),
+                                        onClick = { DeviceOptimizerEngine.openAccessibilitySettings(context) }
+                                    )
+                                    TelemetryCheckRow(
+                                        title = "${stringResource(R.string.priv_tel_adid)} (${tr.adIdTrackerApps.size})",
+                                        desc = stringResource(R.string.priv_tel_adid_desc),
+                                        active = tr.adIdTrackerApps.isNotEmpty(),
+                                        actionLabel = stringResource(R.string.priv_btn_reset_ad),
+                                        onClick = { DeviceOptimizerEngine.openAdsPrivacySettings(context) }
+                                    )
+                                }
+
+                                if (tr.oemAnalyticsApps.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Text("${stringResource(R.string.priv_tel_oem_daemons)} (${tr.oemAnalyticsApps.size})", style = DeckType.IndexTag, color = BrutalistColors.StatusFault)
+                                    Spacer(modifier = Modifier.height(5.dp))
+                                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                        for ((lbl, pkg) in tr.oemAnalyticsApps) {
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
+                                                    .border(1.dp, BrutalistColors.StatusFault.copy(alpha = 0.5f), RoundedCornerShape(2.dp))
+                                                    .padding(7.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f).padding(end = 6.dp)) {
+                                                    Text(lbl, style = DeckType.Label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                                    Text(pkg, style = DeckType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                                 }
-                                            )
+                                                DeckButton(stringResource(R.string.priv_btn_revoke), onClick = { DeviceOptimizerEngine.openAppDetails(context, pkg) })
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (tr.bgLocationApps.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Text("${stringResource(R.string.priv_tel_bgloc)} (${tr.bgLocationApps.size})", style = DeckType.IndexTag, color = BrutalistColors.StatusCaution)
+                                    Spacer(modifier = Modifier.height(5.dp))
+                                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                        for ((lbl, pkg) in tr.bgLocationApps) {
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
+                                                    .border(1.dp, BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
+                                                    .padding(7.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f).padding(end = 6.dp)) {
+                                                    Text(lbl, style = DeckType.Label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                                    Text(pkg, style = DeckType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                                }
+                                                DeckButton(stringResource(R.string.priv_btn_revoke), onClick = { DeviceOptimizerEngine.openAppDetails(context, pkg) })
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    else -> {
+                        val rep = permReport
+                        DeckPanel(
+                            title = stringResource(R.string.priv_tag_perms),
+                            ledColor = BrutalistColors.SignalAccent
+                        ) {
+                            if (rep == null) {
+                                Text(text = stringResource(R.string.apps_loading), style = DeckType.Body)
+                            } else {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    DeckChip("${stringResource(R.string.priv_perm_camera)} (${rep.cameraApps.size})", selectedCategory == 0, { selectedCategory = 0 }, modifier = Modifier.weight(1f))
+                                    DeckChip("${stringResource(R.string.priv_perm_mic)} (${rep.micApps.size})", selectedCategory == 1, { selectedCategory = 1 }, modifier = Modifier.weight(1f))
+                                }
+                                Spacer(modifier = Modifier.height(5.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    DeckChip("${stringResource(R.string.priv_perm_loc)} (${rep.locationApps.size})", selectedCategory == 2, { selectedCategory = 2 }, modifier = Modifier.weight(1f))
+                                    DeckChip("${stringResource(R.string.priv_perm_sms)} (${rep.smsApps.size})", selectedCategory == 3, { selectedCategory = 3 }, modifier = Modifier.weight(1f))
+                                }
+                                Spacer(modifier = Modifier.height(5.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    DeckChip("${stringResource(R.string.priv_perm_overlay)} (${rep.overlayApps.size})", selectedCategory == 4, { selectedCategory = 4 }, modifier = Modifier.weight(1f))
+                                    DeckChip("${stringResource(R.string.priv_perm_install)} (${rep.installApps.size})", selectedCategory == 5, { selectedCategory = 5 }, modifier = Modifier.weight(1f))
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                val list = when (selectedCategory) {
+                                    0 -> rep.cameraApps
+                                    1 -> rep.micApps
+                                    2 -> rep.locationApps
+                                    3 -> rep.smsApps
+                                    4 -> rep.overlayApps
+                                    else -> rep.installApps
+                                }
+                                if (list.isEmpty()) {
+                                    Text(text = stringResource(R.string.priv_no_apps), style = DeckType.Body)
+                                } else {
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        for (app in list) {
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
+                                                    .border(1.dp, BrutalistColors.HairlineBorder, RoundedCornerShape(2.dp))
+                                                    .padding(8.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                                    Text(app.label, style = DeckType.Label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                                    Text(app.packageName, style = DeckType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                                }
+                                                DeckButton(
+                                                    text = stringResource(R.string.priv_btn_revoke),
+                                                    onClick = { DeviceOptimizerEngine.openAppDetails(context, app.packageName) }
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -351,9 +441,51 @@ fun PrivacyAuditScreen() {
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(6.dp))
             }
-            Spacer(modifier = Modifier.height(6.dp))
         }
+    }
+}
+
+@Composable
+private fun TelemetryCheckRow(
+    title: String,
+    desc: String,
+    active: Boolean,
+    actionLabel: String,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(BrutalistColors.ObsidianBg, RoundedCornerShape(2.dp))
+            .border(
+                1.dp,
+                if (active) BrutalistColors.StatusCaution.copy(alpha = 0.6f) else BrutalistColors.HairlineBorder,
+                RoundedCornerShape(2.dp)
+            )
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = DeckType.DataMono,
+                color = if (active) BrutalistColors.StatusCaution else BrutalistColors.StatusNominal,
+                modifier = Modifier.weight(1f).padding(end = 6.dp)
+            )
+            DeckChip(
+                text = if (active) actionLabel else stringResource(R.string.priv_val_disabled),
+                selected = active,
+                accent = if (active) BrutalistColors.StatusCaution else BrutalistColors.StatusNominal,
+                onClick = onClick
+            )
+        }
+        Text(text = desc, style = DeckType.Caption, color = BrutalistColors.TungstenMute)
     }
 }
 

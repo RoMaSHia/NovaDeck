@@ -270,4 +270,74 @@
     <string name="bench_io_iops">4K IOPS</string>
     <string name="bench_throttle_stab">STABILITY: %1$.1f%% · PEAK TEMP: %2$.1f°C</string>
     <string name="bench_history_empty">No recorded benchmark runs yet.</string>
+
+    <!-- Smart Device Optimizer & Advisor -->
+    <string name="opt_tag_advisor">02 // SMART OPTIMIZER &amp; SYSTEM ADVISOR</string>
+    <string name="opt_btn_analyze">ANALYZE</string>
+    <string name="opt_btn_optimize_all">OPTIMIZE ALL</string>
+    <string name="opt_lbl_wrong">ISSUE:</string>
+    <string name="opt_lbl_do">FIX:</string>
+    <string name="opt_done_banner">Trimmed %1$d apps · Freed %2$s RAM · Cleaned %3$s junk.</string>
+    <string name="opt_find_ram_title">High Memory / Background Load (%1$d%% RAM)</string>
+    <string name="opt_find_ram_wrong">Only %1$s RAM free and %2$d autostart apps active in background.</string>
+    <string name="opt_find_ram_do">Trim background processes and clear temporary buffers.</string>
+    <string name="opt_btn_trim_now">FREE RAM NOW</string>
+    <string name="opt_find_stor_title">Storage &amp; Residual Junk (%1$d%% Used)</string>
+    <string name="opt_find_stor_wrong">%1$s reclaimable cache/thumbnails detected (%2$s free).</string>
+    <string name="opt_find_stor_do">Open Storage Optimizer to wipe residual cache and duplicates.</string>
+    <string name="opt_find_auto_title">%1$d Apps Registered for Boot Autostart</string>
+    <string name="opt_find_auto_wrong">%1$d autostart apps are currently loaded in memory.</string>
+    <string name="opt_find_auto_do">Review the Autorun tab to stop and restrict unneeded background apps.</string>
+    <string name="opt_find_bloat_title">%1$d Unnecessary / Bloatware Apps Flagged</string>
+    <string name="opt_find_bloat_wrong">Dormant, OEM adware/bloatware, or heavy ad-tracker packages found.</string>
+    <string name="opt_find_bloat_do">Inspect the Unused/Bloat tab to uninstall or disable them.</string>
+    <string name="opt_find_scan_title">Hidden Wi-Fi / BLE Background Scanning Active</string>
+    <string name="opt_find_scan_wrong">System location scanning toggles remain checked even when Wi-Fi/BT are off.</string>
+    <string name="opt_find_scan_do">Uncheck Wi-Fi and Bluetooth background scanning in Location Settings.</string>
+    <string name="opt_btn_disable_scan">UNCHECK</string>
+    <string name="opt_find_tel_title">Data-Sharing &amp; Telemetry Active (%1$d Ad-ID · %2$d OEM)</string>
+    <string name="opt_find_tel_wrong">Telemetry checkboxes, Ad-ID trackers, or OEM analytics services are sending device data.</string>
+    <string name="opt_find_tel_do">Open Privacy → Telemetry tab to disable diagnostic uploads and reset Ad ID.</string>
+    <string name="opt_find_therm_title">Thermal / Battery Drain Alert (%1$.1f°C)</string>
+    <string name="opt_find_therm_wrong">Battery at %1$d%% while screen runs at %2$d Hz or SoC temperature is elevated.</string>
+    <string name="opt_find_therm_do">Check Battery Telemetry and switch to Ultra-Lite / Power Saver.</string>
+    <string name="opt_find_ok_title">Device Running Optimally</string>
+    <string name="opt_find_ok_wrong">No critical RAM, storage, bloatware, or telemetry leaks detected.</string>
+    <string name="opt_find_ok_do">Continue periodic checks or run a C++ benchmark.</string>
+
+    <!-- Autorun & Bloatware Tabs -->
+    <string name="apps_filter_autorun">AUTORUN</string>
+    <string name="apps_filter_bloat">UNUSED/BLOAT</string>
+    <string name="apps_btn_kill_all_auto">STOP ALL RUNNING AUTORUN (%1$d)</string>
+    <string name="apps_killed_msg">Stopped %1$d background autostart processes.</string>
+    <string name="apps_usage_hint">Grant Usage Access to detect exact days unused per app (OEM bloat &amp; trackers work without it).</string>
+    <string name="apps_btn_grant_usage">GRANT USAGE ACCESS</string>
+    <string name="apps_no_bloat">No unnecessary or bloatware apps flagged on this device.</string>
+    <string name="apps_autorun_running">● RUNNING IN RAM · Boot Autostart</string>
+    <string name="apps_autorun_idle">○ IDLE · Registered for Boot Autostart</string>
+    <string name="apps_btn_stop_restrict">STOP + RESTRICT</string>
+    <string name="apps_reason_bloat">OEM / Adware Bloat</string>
+    <string name="apps_reason_unused">Unused %1$d days</string>
+    <string name="apps_reason_dormant">Dormant &amp; Heavy</string>
+    <string name="apps_reason_tracker_auto">Ad Tracker + Autostart</string>
+    <string name="apps_reason_heavy">Heavy (%1$d MB)</string>
+
+    <!-- Telemetry & Data-Sharing Audit -->
+    <string name="priv_tab_telemetry">TELEMETRY</string>
+    <string name="priv_tag_telemetry">02B // DATA SHARING &amp; TELEMETRY CHECKBOXES</string>
+    <string name="priv_tel_intro">Audits system checkboxes and services that silently share device telemetry, location scans, or advertising identifiers with third parties.</string>
+    <string name="priv_tel_wifi_scan">WI-FI BACKGROUND SCANNING</string>
+    <string name="priv_tel_wifi_scan_desc">Lets Google/apps scan nearby Wi-Fi networks for location even when Wi-Fi is switched off.</string>
+    <string name="priv_tel_ble_scan">BLUETOOTH BACKGROUND SCANNING</string>
+    <string name="priv_tel_ble_scan_desc">Lets system/apps scan Bluetooth beacons in the background even when BT is off.</string>
+    <string name="priv_tel_diag">USAGE &amp; DIAGNOSTICS UPLOAD</string>
+    <string name="priv_tel_diag_desc">Sends crash logs and device usage diagnostics when opt-in checkbox is left checked.</string>
+    <string name="priv_tel_notif">NOTIFICATION READERS</string>
+    <string name="priv_tel_a11y">SCREEN / ACCESSIBILITY READERS</string>
+    <string name="priv_tel_adid">AD-ID TRACKING APPS</string>
+    <string name="priv_tel_adid_desc">Apps requesting your device Advertising ID for cross-app profiling.</string>
+    <string name="priv_tel_oem_daemons">OEM TELEMETRY DAEMONS</string>
+    <string name="priv_tel_bgloc">24/7 BACKGROUND LOCATION SENDERS</string>
+    <string name="priv_btn_uncheck">UNCHECK</string>
+    <string name="priv_btn_reset_ad">DELETE AD ID</string>
 </resources>
